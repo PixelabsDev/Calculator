@@ -24,7 +24,7 @@ data class UserReport(
     val title: String,
     val description: String,
     val email: String,
-    val appVersion: String = "18.0",
+    val appVersion: String = "19.0",
     val androidVersion: String = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
     val deviceModel: String = "${Build.MANUFACTURER} ${Build.MODEL}",
     val isRadMode: Boolean = false,
@@ -41,7 +41,7 @@ sealed class ReportSubmitState {
 class ReportManager(private val context: Context) {
 
     companion object {
-        // Securely hardcoded backend webhook endpoint - users cannot view or modify this
+        // Secure backend webhook endpoint
         private const val BACKEND_WEBHOOK_URL =
             "https://script.google.com/macros/s/AKfycbwe1elw5cNmY2zoa1LMmO3D5bEIhnfVE6MpbDk1wc6iePfiQ4Mh_YeNQYAye2TNsune/exec"
     }
@@ -83,20 +83,18 @@ class ReportManager(private val context: Context) {
                     .post(body)
                     .build()
 
-                val response = client.newCall(request).execute()
-                val isSuccessful = response.isSuccessful
-                response.close()
-
-                if (isSuccessful) {
-                    _submitState.value = ReportSubmitState.Success(
-                        "Thank you! Your feedback has been received."
-                    )
-                    true
-                } else {
-                    _submitState.value = ReportSubmitState.Error(
-                        "Server returned HTTP ${response.code}. Please try again or use Email."
-                    )
-                    false
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        _submitState.value = ReportSubmitState.Success(
+                            "Thank you! Your feedback has been received."
+                        )
+                        true
+                    } else {
+                        _submitState.value = ReportSubmitState.Error(
+                            "Server returned HTTP ${response.code}. Please try again or use Email."
+                        )
+                        false
+                    }
                 }
             } catch (e: Exception) {
                 _submitState.value = ReportSubmitState.Error(

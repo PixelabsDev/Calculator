@@ -6,7 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.auth.AuthState
 import com.example.auth.GoogleAuthManager
-import com.example.auth.GoogleUserAccount
 import com.example.data.AppDatabase
 import com.example.data.HistoryEntry
 import com.example.data.HistoryRepository
@@ -19,8 +18,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.math.MathContext
+import java.math.RoundingMode
+import java.util.Locale
 import kotlin.math.abs
 
 class CalculatorViewModel(application: Application) : AndroidViewModel(application) {
@@ -111,7 +115,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     private val _resultState = MutableStateFlow("")
     val resultState: StateFlow<String> = _resultState.asStateFlow()
 
-    private val _isRadMode = MutableStateFlow(false) // Standard default is Deg mode on many devices, but lets support toggle easily!
+    private val _isRadMode = MutableStateFlow(false) // Default: Deg mode
     val isRadMode: StateFlow<Boolean> = _isRadMode.asStateFlow()
 
     private val _isInvMode = MutableStateFlow(false)
@@ -124,9 +128,11 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
     init {
-        // Collect input values to make live calculation previews
+        // Collect both input values and angle mode to provide live, reactive calculation previews
         viewModelScope.launch {
-            _inputState.collect { currentInput ->
+            combine(_inputState, _isRadMode) { currentInput, isRad ->
+                Pair(currentInput, isRad)
+            }.collect { (currentInput, isRad) ->
                 if (currentInput.isEmpty()) {
                     _resultState.value = ""
                     return@collect
@@ -148,7 +154,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                         return@collect
                     }
 
-                    val parser = ExpressionParser(_isRadMode.value)
+                    val parser = ExpressionParser(isRad)
                     val rawResult = parser.evaluate(parseInput)
                     _resultState.value = formatResult(rawResult)
                 } catch (e: Throwable) {
@@ -198,7 +204,11 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                 if (current.isEmpty()) return
 
                 // Slick multichar deletion for scientific functions
-                val functions = listOf("sin⁻¹(", "cos⁻¹(", "tan⁻¹(", "sin(", "cos(", "tan(", "log(", "ln(", "√(")
+                val functions = listOf(
+                    "sin⁻¹(", "cos⁻¹(", "tan⁻¹(",
+                    "sin(", "cos(", "tan(",
+                    "log(", "ln(", "√("
+                )
                 var deleted = false
                 for (f in functions) {
                     if (current.endsWith(f)) {
@@ -213,7 +223,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             }
             "(" -> {
                 val current = _inputState.value
-                val lastChar = if (current.isNotEmpty()) current.last() else null
+                val lastChar = current.lastOrNull()
                 if (lastChar != null && (lastChar.isDigit() || lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!')) {
                     _inputState.value += "×("
                 } else {
@@ -232,7 +242,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                 val current = _inputState.value
                 val openCount = current.count { it == '(' }
                 val closeCount = current.count { it == ')' }
-                val lastChar = if (current.isNotEmpty()) current.last() else null
+                val lastChar = current.lastOrNull()
 
                 if (openCount > closeCount && lastChar != null && lastChar != '(' && !isOperator(lastChar)) {
                     _inputState.value += ")"
@@ -247,22 +257,34 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             "=" -> {
                 val currentInput = _inputState.value
                 if (currentInput.isEmpty()) return
+
+                // Auto balance parentheses for clean final evaluation
+                var evalInput = currentInput
+                val openCount = evalInput.count { it == '(' }
+                val closeCount = evalInput.count { it == ')' }
+                if (openCount > closeCount) {
+                    evalInput += ")".repeat(openCount - closeCount)
+                }
+
                 try {
                     val parser = ExpressionParser(_isRadMode.value)
-                    val rawResult = parser.evaluate(currentInput)
+                    val rawResult = parser.evaluate(evalInput)
                     val formattedResult = formatResult(rawResult)
 
-                    // Insert to history database
-                    viewModelScope.launch {
-                        try {
-                            repository.insert(
-                                HistoryEntry(
-                                    expression = currentInput,
-                                    result = formattedResult
+                    // Avoid saving duplicate or trivial entries (e.g. single number)
+                    val isTrivial = currentInput.toDoubleOrNull() != null || currentInput == formattedResult
+                    if (!isTrivial) {
+                        viewModelScope.launch {
+                            try {
+                                repository.insert(
+                                    HistoryEntry(
+                                        expression = evalInput,
+                                        result = formattedResult
+                                    )
                                 )
-                            )
-                        } catch (t: Throwable) {
-                            t.printStackTrace()
+                            } catch (t: Throwable) {
+                                t.printStackTrace()
+                            }
                         }
                     }
 
@@ -274,9 +296,29 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             }
             "+", "-", "×", "÷", "^" -> {
                 val current = _inputState.value
-                if (current.isNotEmpty() && isOperator(current.last())) {
-                    _inputState.value = current.substring(0, current.length - 1) + key
-                } else if (current.isNotEmpty() || key == "-") { // Allow unary minus at beginning
+                if (current.isEmpty()) {
+                    if (key == "-") {
+                        _inputState.value = "-"
+                    }
+                    return
+                }
+
+                val lastChar = current.last()
+
+                // Allow unary minus following a multiply, divide, power, or open parenthesis
+                if (key == "-" && (lastChar == '×' || lastChar == '÷' || lastChar == '^' || lastChar == '(')) {
+                    _inputState.value += key
+                    return
+                }
+
+                if (isOperator(lastChar)) {
+                    // Check if second-to-last char is also an operator (e.g. "×-")
+                    if (current.length >= 2 && isOperator(current[current.length - 2])) {
+                        _inputState.value = current.substring(0, current.length - 2) + key
+                    } else {
+                        _inputState.value = current.substring(0, current.length - 1) + key
+                    }
+                } else if (lastChar != '(') {
                     _inputState.value += key
                 }
             }
@@ -309,6 +351,12 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             }
             "." -> {
                 val current = _inputState.value
+                val lastChar = current.lastOrNull()
+                if (lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!') {
+                    _inputState.value += "×0."
+                    return
+                }
+
                 var hasDecimal = false
                 for (i in current.length - 1 downTo 0) {
                     val ch = current[i]
@@ -330,9 +378,9 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             }
             else -> { // Standard digit input 0-9
                 val current = _inputState.value
-                val lastChar = if (current.isNotEmpty()) current.last() else null
-                
-                // If last char is a constant or closed parenthesis or percent/factorial and we append a digit, insert implicit multiply
+                val lastChar = current.lastOrNull()
+
+                // If last char is a constant, closed paren, %, or ! and we append a digit, insert implicit multiply
                 if (lastChar != null && (lastChar == 'π' || lastChar == 'e' || lastChar == ')' || lastChar == '%' || lastChar == '!')) {
                     _inputState.value += "×$key"
                 } else {
@@ -344,7 +392,8 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun appendConstant(constant: String) {
         val current = _inputState.value
-        val prefix = if (current.isNotEmpty() && (current.last().isDigit() || current.last() == ')' || current.last() == 'π' || current.last() == 'e' || current.last() == '%' || current.last() == '!')) {
+        val lastChar = current.lastOrNull()
+        val prefix = if (lastChar != null && (lastChar.isDigit() || lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!')) {
             "×$constant"
         } else {
             constant
@@ -354,7 +403,8 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun appendFunction(func: String) {
         val current = _inputState.value
-        val prefix = if (current.isNotEmpty() && (current.last().isDigit() || current.last() == ')' || current.last() == 'π' || current.last() == 'e' || current.last() == '%' || current.last() == '!')) {
+        val lastChar = current.lastOrNull()
+        val prefix = if (lastChar != null && (lastChar.isDigit() || lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!')) {
             "×$func"
         } else {
             func
@@ -422,28 +472,41 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun formatResult(value: Double): String {
+    /**
+     * Formats calculation results with high mathematical precision.
+     * Prevents Long.MAX_VALUE saturation, floating-point noise, and awkward trailing zeros.
+     */
+    fun formatResult(value: Double): String {
         if (value.isNaN()) return "Error"
         if (value.isInfinite()) return if (value > 0) "Infinity" else "-Infinity"
+        if (abs(value) < 1e-15) return "0"
 
-        // Check closeness to a whole integer representation
-        val longVal = Math.round(value)
-        if (abs(value - longVal) < 1e-12) {
-            return longVal.toString()
-        }
-
-        // Scientific representation if too big or too small
+        // Scientific notation for very large or very small non-zero numbers
         if (abs(value) >= 1e12 || (abs(value) < 1e-4 && value != 0.0)) {
-            return String.format(java.util.Locale.US, "%.6e", value)
-                .replace("0+e", "e")
-                .replace(".e", "e")
+            val sci = String.format(Locale.US, "%.8e", value)
+            val parts = sci.split("e")
+            val mantissa = parts[0].trimEnd('0').trimEnd('.')
+            val exp = parts[1].replace("+", "").toInt()
+            return "${mantissa}e$exp"
         }
 
-        val formatted = String.format(java.util.Locale.US, "%.10f", value)
-        if (formatted.contains(".")) {
-            return formatted.trimEnd('0').trimEnd('.')
+        // Check closeness to a whole integer representation in safe range
+        if (abs(value) < 1e12) {
+            val rounded = Math.round(value)
+            if (abs(value - rounded.toDouble()) < 1e-11) {
+                return rounded.toString()
+            }
         }
-        return formatted
+
+        // Clean high-precision decimal representation
+        return try {
+            val bd = BigDecimal(value, MathContext(12, RoundingMode.HALF_UP))
+            val plain = bd.stripTrailingZeros().toPlainString()
+            plain
+        } catch (_: Exception) {
+            val formatted = String.format(Locale.US, "%.10f", value)
+            if (formatted.contains(".")) formatted.trimEnd('0').trimEnd('.') else formatted
+        }
     }
 }
 

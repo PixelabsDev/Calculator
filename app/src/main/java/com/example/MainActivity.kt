@@ -57,6 +57,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -621,9 +622,17 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             verticalArrangement = Arrangement.Bottom,
                             horizontalAlignment = Alignment.End
                         ) {
-                            // Active input expression
+                            // Active input expression with auto-scroll to trailing edge
+                            val inputScrollState = rememberScrollState()
+                            LaunchedEffect(input) {
+                                if (input.isNotEmpty()) {
+                                    inputScrollState.animateScrollTo(inputScrollState.maxValue)
+                                }
+                            }
                             Box(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(inputScrollState),
                                 contentAlignment = Alignment.BottomEnd
                             ) {
                                 Text(
@@ -631,10 +640,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     style = TextStyleForInput(input),
                                     color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
                                     textAlign = TextAlign.End,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis,
+                                    maxLines = 1,
                                     modifier = Modifier
-                                        .fillMaxWidth()
                                         .testTag("calculation_input"),
                                     fontFamily = FontFamily.SansSerif
                                 )
@@ -642,18 +649,30 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            // Live preview evaluation result
-                            if (result.isNotEmpty()) {
-                                Text(
-                                    text = result,
-                                    style = TextStyleForOutput(result),
-                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
-                                    textAlign = TextAlign.End,
-                                    maxLines = 1,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("calculation_preview")
-                                )
+                            // Live preview evaluation result with fluid slide & fade transition
+                            AnimatedContent(
+                                targetState = result,
+                                transitionSpec = {
+                                    (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                                        slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
+                                        .togetherWith(
+                                            fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
+                                        )
+                                },
+                                label = "calculationPreviewAnim"
+                            ) { previewText ->
+                                if (previewText.isNotEmpty()) {
+                                    Text(
+                                        text = previewText,
+                                        style = TextStyleForOutput(previewText),
+                                        color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                                        textAlign = TextAlign.End,
+                                        maxLines = 1,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("calculation_preview")
+                                    )
+                                }
                             }
                         }
 
@@ -1382,17 +1401,19 @@ fun BackspaceIcon(modifier: Modifier = Modifier, color: Color) {
 fun rememberVibrator(): (isSpecial: Boolean) -> Unit {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    return remember(context, haptic) {
+    val vibrator = remember(context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vibratorManager?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+    }
+
+    return remember(vibrator, haptic) {
         { isSpecial ->
             try {
-                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                    vibratorManager?.defaultVibrator
-                } else {
-                    @Suppress("DEPRECATION")
-                    context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                }
-
                 if (vibrator != null && vibrator.hasVibrator()) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         val effect = if (isSpecial) {
@@ -1417,7 +1438,7 @@ fun rememberVibrator(): (isSpecial: Boolean) -> Unit {
                         if (isSpecial) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 try {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 } catch (_: Exception) { }
@@ -1443,12 +1464,18 @@ fun KeypadButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed) 0.91f else 1f,
         animationSpec = spring(
-            dampingRatio = 0.5f,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = 0.55f,
+            stiffness = 450f
         ),
         label = "btnScale"
+    )
+
+    val animatedBg by animateColorAsState(
+        targetValue = if (isPressed) bgColor.copy(alpha = 0.82f) else bgColor,
+        animationSpec = tween(durationMillis = 100),
+        label = "btnColorAnim"
     )
 
     val sizingModifier = if (buttonAspectRatio > 0f) {
@@ -1464,12 +1491,13 @@ fun KeypadButton(
                 scaleY = scale
             }
             .clip(shape)
-            .background(bgColor)
+            .background(animatedBg)
             .clickable(
                 interactionSource = interactionSource,
                 indication = ripple(bounded = true)
             ) {
-                vibrate(label == "=" || label == "AC" || label == "C")
+                val isHeavy = label == "=" || label == "AC" || label == "C"
+                vibrate(isHeavy)
                 onClick()
             }
             .testTag("btn_$label"),
@@ -2153,30 +2181,53 @@ fun LandscapeCalculatorLayout(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                Text(
-                    text = if (input.isEmpty()) "0" else input,
-                    style = TextStyleForInput(input),
-                    color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
-                    textAlign = TextAlign.End,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
+                val landInputScrollState = rememberScrollState()
+                LaunchedEffect(input) {
+                    if (input.isNotEmpty()) {
+                        landInputScrollState.animateScrollTo(landInputScrollState.maxValue)
+                    }
+                }
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("calculation_input"),
-                    fontFamily = FontFamily.SansSerif
-                )
-
-                if (result.isNotEmpty()) {
+                        .horizontalScroll(landInputScrollState),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
                     Text(
-                        text = result,
-                        style = TextStyleForOutput(result),
-                        color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                        text = if (input.isEmpty()) "0" else input,
+                        style = TextStyleForInput(input),
+                        color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
                         textAlign = TextAlign.End,
                         maxLines = 1,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("calculation_preview")
+                            .testTag("calculation_input"),
+                        fontFamily = FontFamily.SansSerif
                     )
+                }
+
+                AnimatedContent(
+                    targetState = result,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                            slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
+                            .togetherWith(
+                                fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
+                            )
+                    },
+                    label = "landCalculationPreviewAnim"
+                ) { previewText ->
+                    if (previewText.isNotEmpty()) {
+                        Text(
+                            text = previewText,
+                            style = TextStyleForOutput(previewText),
+                            color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("calculation_preview")
+                        )
+                    }
                 }
             }
         }

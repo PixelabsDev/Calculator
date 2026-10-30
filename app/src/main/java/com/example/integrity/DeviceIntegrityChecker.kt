@@ -54,7 +54,12 @@ class DeviceIntegrityChecker(private val context: Context) {
 
         var playServicesVersion = "N/A"
         try {
-            val packageInfo = context.packageManager.getPackageInfo("com.google.android.gms", 0)
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo("com.google.android.gms", PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo("com.google.android.gms", 0)
+            }
             playServicesVersion = packageInfo.versionName ?: "Unknown"
         } catch (_: Exception) {
             playServicesVersion = "Not Installed"
@@ -133,11 +138,6 @@ class DeviceIntegrityChecker(private val context: Context) {
     }
 
     private fun checkRootMethod(): Boolean {
-        val buildTags = Build.TAGS
-        if (buildTags != null && buildTags.contains("test-keys")) {
-            // Test keys might indicate custom ROM
-        }
-
         val paths = arrayOf(
             "/system/app/Superuser.apk",
             "/sbin/su",
