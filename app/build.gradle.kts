@@ -21,33 +21,22 @@ android {
   }
 
   signingConfigs {
-    create("release") {
-      val customPath = System.getenv("KEYSTORE_PATH")
-      val customFile = when {
-        customPath != null -> file(customPath)
-        file("${rootDir}/upload-keystore.jks").exists() -> file("${rootDir}/upload-keystore.jks")
-        file("${rootDir}/my-upload-key.jks").exists() -> file("${rootDir}/my-upload-key.jks")
-        else -> null
-      }
-
-      if (customFile != null && customFile.exists()) {
-        storeFile = customFile
-        storePassword = System.getenv("STORE_PASSWORD")
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD")
-      } else {
-        // Fallback to debug keystore for local/CI build validation
-        storeFile = file("${rootDir}/debug.keystore")
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
-      }
+    val customPath = System.getenv("KEYSTORE_PATH")
+    val customFile = when {
+      customPath != null && file(customPath).exists() -> file(customPath)
+      file("${rootDir}/upload-keystore.jks").exists() -> file("${rootDir}/upload-keystore.jks")
+      file("${rootDir}/my-upload-key.jks").exists() -> file("${rootDir}/my-upload-key.jks")
+      file("${rootDir}/debug.keystore").exists() -> file("${rootDir}/debug.keystore")
+      else -> null
     }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+
+    if (customFile != null) {
+      create("release") {
+        storeFile = customFile
+        storePassword = System.getenv("STORE_PASSWORD") ?: "android"
+        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+      }
     }
   }
 
@@ -56,10 +45,16 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      val releaseSigning = signingConfigs.findByName("release")
+      if (releaseSigning != null) {
+        signingConfig = releaseSigning
+      }
     }
     debug {
-      signingConfig = signingConfigs.getByName("debugConfig")
+      val debugSigning = signingConfigs.findByName("release")
+      if (debugSigning != null) {
+        signingConfig = debugSigning
+      }
     }
   }
   compileOptions {

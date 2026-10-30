@@ -46,13 +46,15 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      - name: Decode Upload Keystore
-        if: env.HAS_KEYSTORE == 'true'
-        env:
-          HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
+      - name: Prepare Keystore
         run: |
-          echo "Decoding release upload keystore..."
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/upload-keystore.jks"
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Decoding release upload keystore from GitHub Secrets..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/upload-keystore.jks"
+          else
+            echo "KEYSTORE_BASE64 secret not yet configured. Generating temporary signing keystore for build verification..."
+            keytool -genkey -v -keystore "${{ github.workspace }}/upload-keystore.jks" -alias upload -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Build,O=Pixelabs,C=US"
+          fi
 
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
