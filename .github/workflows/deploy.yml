@@ -55,7 +55,7 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/upload-keystore.jks"
 
       - name: Run Unit Tests
-        run: ./gradlew testReleaseUnitTest --stacktrace
+        run: ./gradlew test --stacktrace
 
       - name: Build Release App Bundle (.aab)
         env:
