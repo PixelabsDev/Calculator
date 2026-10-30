@@ -62,9 +62,9 @@ jobs:
       - name: Build Release App Bundle (.aab)
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/upload-keystore.jks
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'android' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
           VERSION_CODE: ${{ inputs.version_code || secrets.VERSION_CODE }}
           VERSION_NAME: ${{ inputs.version_name || secrets.VERSION_NAME }}
         run: ./gradlew bundleRelease --stacktrace
