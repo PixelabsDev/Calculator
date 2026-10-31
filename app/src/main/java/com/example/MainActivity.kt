@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -637,14 +638,15 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     )
                                 }
                         ) {
-                        // Display Canvas Area
+                        // Display Canvas Area with guaranteed minimum height to prevent any preview clipping
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
+                                .defaultMinSize(minHeight = 150.dp)
                                 .background(displayBgColor)
                                 .clickable { showHistoryDrawer = true }
-                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                                .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 12.dp),
                             verticalArrangement = Arrangement.Bottom,
                             horizontalAlignment = Alignment.End
                         ) {
@@ -718,12 +720,13 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             }
                         }
 
-                        // Minimal Chevron Expand Button (No text written!)
-                        Box(
+                        // Minimal Chevron Expand Button & Mode Row
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 24.dp, bottom = 4.dp),
-                            contentAlignment = Alignment.CenterStart
+                                .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
                                 onClick = {
@@ -739,14 +742,24 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68)
                                 )
                             }
+
+                            if (isRadMode) {
+                                Text(
+                                    text = "RAD",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
+                                    )
+                                )
+                            }
                         }
 
-                // 4. Keyboard Section from "Professional Polish" design theme with smooth, synchronized animations
-                val targetAspectRatio = if (isScientificExpanded && isPortrait) 1.25f else 1f
-                val targetKeypadSpacing = if (isScientificExpanded && isPortrait) 8.dp else 12.dp
-                val targetKeypadPaddingTop = if (isScientificExpanded && isPortrait) 12.dp else 20.dp
-                val targetKeypadPaddingBottom = if (isScientificExpanded && isPortrait) 16.dp else 24.dp
-                val targetScientificSpacing = if (isScientificExpanded && isPortrait) 8.dp else 10.dp
+                // 4. Keyboard Section: Responsive aspect ratio prevents scientific keypad from squishing the display
+                val targetAspectRatio = if (isScientificExpanded && isPortrait) 1.85f else 1.05f
+                val targetKeypadSpacing = if (isScientificExpanded && isPortrait) 6.dp else 12.dp
+                val targetKeypadPaddingTop = if (isScientificExpanded && isPortrait) 8.dp else 18.dp
+                val targetKeypadPaddingBottom = if (isScientificExpanded && isPortrait) 12.dp else 22.dp
+                val targetScientificSpacing = if (isScientificExpanded && isPortrait) 6.dp else 10.dp
 
                 val animSpecFloat = tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing)
                 val animSpecDp = tween<androidx.compose.ui.unit.Dp>(durationMillis = 260, easing = FastOutSlowInEasing)
@@ -1534,10 +1547,22 @@ fun KeypadButton(
             .testTag("btn_$label"),
         contentAlignment = Alignment.Center
     ) {
+        val effectiveFontSize = remember(fontSize, buttonAspectRatio, label) {
+            if (buttonAspectRatio > 1.3f) {
+                if (label.length >= 4) 11.sp
+                else if (label.length >= 3) 13.sp
+                else 16.sp
+            } else {
+                if (label.length >= 4) 13.sp
+                else if (label.length >= 3) 16.sp
+                else fontSize
+            }
+        }
+
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium.copy(
-                fontSize = fontSize,
+                fontSize = effectiveFontSize,
                 color = txtColor,
                 fontWeight = fontWeight
             )
