@@ -35,6 +35,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -51,6 +52,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -88,6 +90,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -103,6 +106,10 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -111,8 +118,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.calculator.CalculatorViewModel
 import com.example.data.HistoryEntry
@@ -344,25 +353,31 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     targetState = showHistoryDrawer,
                     transitionSpec = {
                         if (targetState) {
-                            // Opening History: gentle, jitter-free slide down + fade in
+                            // Opening History: spring physics slide down from top + gentle fade in
                             (slideInVertically(
-                                animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-                                initialOffsetY = { -it / 8 }
+                                animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
+                                initialOffsetY = { -it }
                             ) + fadeIn(
                                 animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
                             )).togetherWith(
-                                fadeOut(
+                                slideOutVertically(
+                                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
+                                    targetOffsetY = { it / 3 }
+                                ) + fadeOut(
                                     animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
                                 )
                             )
                         } else {
-                            // Closing History: smooth fade in for calculator + slide up fade out for history
-                            (fadeIn(
+                            // Closing History: spring physics slide up to top + smooth fade in for calculator
+                            (slideInVertically(
+                                animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
+                                initialOffsetY = { it / 3 }
+                            ) + fadeIn(
                                 animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
                             )).togetherWith(
                                 slideOutVertically(
-                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                                    targetOffsetY = { -it / 8 }
+                                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
+                                    targetOffsetY = { -it }
                                 ) + fadeOut(
                                     animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
                                 )
@@ -373,11 +388,43 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     label = "historyPageTransition"
                 ) { isHistoryOpen ->
                     if (isHistoryOpen) {
-                        // Full Screen History View with Google Cloud Backup Banner
+                        // Full Screen History View with Two-Way Swipe Dismissal
+                        val historyNestedScroll = remember {
+                            object : NestedScrollConnection {
+                                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                    if (available.y < -35f) {
+                                        showHistoryDrawer = false
+                                    }
+                                    return Offset.Zero
+                                }
+                            }
+                        }
+                        var historyDragAccumulator by remember { mutableFloatStateOf(0f) }
+
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(appBgColor)
+                                .nestedScroll(historyNestedScroll)
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = { historyDragAccumulator = 0f },
+                                        onDragEnd = {
+                                            if (historyDragAccumulator < -40f) {
+                                                showHistoryDrawer = false
+                                            }
+                                            historyDragAccumulator = 0f
+                                        },
+                                        onDragCancel = { historyDragAccumulator = 0f },
+                                        onVerticalDrag = { change, dragAmount ->
+                                            historyDragAccumulator += dragAmount
+                                            if (historyDragAccumulator < -80f) {
+                                                showHistoryDrawer = false
+                                                change.consume()
+                                            }
+                                        }
+                                    )
+                                }
                         ) {
                         Column(
                             modifier = Modifier
@@ -418,7 +465,10 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                                     fontSize = 20.sp,
                                                     fontWeight = FontWeight.Medium
                                                 ),
-                                                textAlign = TextAlign.End
+                                                textAlign = TextAlign.End,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                             Spacer(modifier = Modifier.height(2.dp))
                                             Text(
@@ -426,9 +476,12 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                                 style = MaterialTheme.typography.headlineLarge.copy(
                                                     color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0F172A),
                                                     fontWeight = FontWeight.SemiBold,
-                                                    fontSize = 32.sp
+                                                    fontSize = if (item.result.length > 12) 24.sp else 32.sp
                                                 ),
-                                                textAlign = TextAlign.End
+                                                textAlign = TextAlign.End,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }
@@ -448,10 +501,53 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             }
                         }
 
-                        // Pinned Bottom Sheet for "Current expression" (Screenshot 6 bottom sheet)
+                        // Pinned Bottom Sheet for "Current expression" with responsive drag handle physics & single-line auto-scaling
+                        var handleDragOffset by remember { mutableFloatStateOf(0f) }
+                        val animatedHandleOffset by animateFloatAsState(
+                            targetValue = handleDragOffset,
+                            animationSpec = spring(dampingRatio = 0.8f, stiffness = 420f),
+                            label = "sheetHandleDragOffset"
+                        )
+
+                        val currentPreviewText = if (result.isNotEmpty()) result else if (input.isNotEmpty()) input else "0"
+                        val bottomPreviewScroll = rememberScrollState()
+                        LaunchedEffect(currentPreviewText) {
+                            if (currentPreviewText.isNotEmpty()) {
+                                bottomPreviewScroll.animateScrollTo(bottomPreviewScroll.maxValue)
+                            }
+                        }
+
+                        // Auto-scaling font size for large exponents / long expressions to prevent overflow
+                        val bottomPreviewFontSize = when {
+                            currentPreviewText.length <= 7 -> 30.sp
+                            currentPreviewText.length <= 11 -> 24.sp
+                            currentPreviewText.length <= 15 -> 19.sp
+                            currentPreviewText.length <= 20 -> 16.sp
+                            else -> 13.sp
+                        }
+
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .offset { IntOffset(0, animatedHandleOffset.roundToInt()) }
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = { handleDragOffset = 0f },
+                                        onDragEnd = {
+                                            if (handleDragOffset < -35f || handleDragOffset > 45f) {
+                                                showHistoryDrawer = false
+                                            }
+                                            handleDragOffset = 0f
+                                        },
+                                        onDragCancel = { handleDragOffset = 0f },
+                                        onVerticalDrag = { change, dragAmount ->
+                                            handleDragOffset += dragAmount
+                                            if (handleDragOffset < -70f || handleDragOffset > 90f) {
+                                                showHistoryDrawer = false
+                                            }
+                                        }
+                                    )
+                                }
                                 .clickable { showHistoryDrawer = false },
                             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                             color = if (isDark) Color(0xFF221E2C) else Color(0xFFEDE8F5)
@@ -483,26 +579,63 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             color = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569),
                                             fontWeight = FontWeight.Medium
-                                        )
+                                        ),
+                                        maxLines = 1,
+                                        modifier = Modifier.padding(end = 12.dp)
                                     )
 
-                                    Text(
-                                        text = if (result.isNotEmpty()) result else if (input.isNotEmpty()) input else "0",
-                                        style = MaterialTheme.typography.headlineLarge.copy(
-                                            color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0F172A),
-                                            fontWeight = FontWeight.SemiBold
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .horizontalScroll(bottomPreviewScroll),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Text(
+                                            text = currentPreviewText,
+                                            style = MaterialTheme.typography.headlineLarge.copy(
+                                                fontSize = bottomPreviewFontSize,
+                                                color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0F172A),
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            textAlign = TextAlign.End,
+                                            fontFamily = FontFamily.SansSerif
                                         )
-                                    )
+                                    }
                                 }
                             }
                         }
                     }
                 } else {
                     if (isPortrait) {
-                        // Standard Portrait Calculator View
+                        // Standard Portrait Calculator View with swipe-down-to-history gesture
+                        var calcSwipeDownAccumulator by remember { mutableFloatStateOf(0f) }
+
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = { calcSwipeDownAccumulator = 0f },
+                                        onDragEnd = {
+                                            if (calcSwipeDownAccumulator > 50f) {
+                                                showHistoryDrawer = true
+                                            }
+                                            calcSwipeDownAccumulator = 0f
+                                        },
+                                        onDragCancel = { calcSwipeDownAccumulator = 0f },
+                                        onVerticalDrag = { change, dragAmount ->
+                                            if (dragAmount > 0) {
+                                                calcSwipeDownAccumulator += dragAmount
+                                                if (calcSwipeDownAccumulator > 120f) {
+                                                    showHistoryDrawer = true
+                                                    change.consume()
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
                         ) {
                         // Display Canvas Area
                         Column(
@@ -534,6 +667,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
                                     textAlign = TextAlign.End,
                                     maxLines = 1,
+                                    softWrap = false,
                                     modifier = Modifier
                                         .testTag("calculation_input"),
                                     fontFamily = FontFamily.SansSerif
@@ -542,7 +676,14 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            // Live preview evaluation result with fluid slide & fade transition
+                            // Live preview evaluation result with fluid slide & fade transition and horizontal scroll
+                            val previewScrollState = rememberScrollState()
+                            LaunchedEffect(result) {
+                                if (result.isNotEmpty()) {
+                                    previewScrollState.animateScrollTo(previewScrollState.maxValue)
+                                }
+                            }
+
                             AnimatedContent(
                                 targetState = result,
                                 transitionSpec = {
@@ -555,16 +696,24 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 label = "calculationPreviewAnim"
                             ) { previewText ->
                                 if (previewText.isNotEmpty()) {
-                                    Text(
-                                        text = previewText,
-                                        style = TextStyleForOutput(previewText),
-                                        color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
-                                        textAlign = TextAlign.End,
-                                        maxLines = 1,
+                                    Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .testTag("calculation_preview")
-                                    )
+                                            .horizontalScroll(previewScrollState),
+                                        contentAlignment = Alignment.BottomEnd
+                                    ) {
+                                        Text(
+                                            text = previewText,
+                                            style = TextStyleForOutput(previewText),
+                                            color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                                            textAlign = TextAlign.End,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            modifier = Modifier
+                                                .testTag("calculation_preview"),
+                                            fontFamily = FontFamily.SansSerif
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1448,17 +1597,19 @@ fun HistoryRow(
 // Dynamically adjusts input text size based on formulas length to avoid clipping
 @Composable
 private fun TextStyleForInput(input: String) = when {
-    input.length < 10 -> MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.SemiBold)
-    input.length < 20 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.SemiBold)
-    input.length < 35 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
+    input.length < 8 -> MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.SemiBold)
+    input.length < 14 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.SemiBold)
+    input.length < 22 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
+    input.length < 32 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal)
     else -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
 }
 
 // Adjusts live output result size as well to make everything beautifully fit
 @Composable
 private fun TextStyleForOutput(result: String) = when {
-    result.length < 12 -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium)
-    result.length < 22 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
+    result.length < 10 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Medium)
+    result.length < 16 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
+    result.length < 24 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
     else -> MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
 }
 
@@ -1758,10 +1909,18 @@ fun LandscapeCalculatorLayout(
                         color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
                         textAlign = TextAlign.End,
                         maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier
                             .testTag("calculation_input"),
                         fontFamily = FontFamily.SansSerif
                     )
+                }
+
+                val landPreviewScrollState = rememberScrollState()
+                LaunchedEffect(result) {
+                    if (result.isNotEmpty()) {
+                        landPreviewScrollState.animateScrollTo(landPreviewScrollState.maxValue)
+                    }
                 }
 
                 AnimatedContent(
@@ -1776,16 +1935,24 @@ fun LandscapeCalculatorLayout(
                     label = "landCalculationPreviewAnim"
                 ) { previewText ->
                     if (previewText.isNotEmpty()) {
-                        Text(
-                            text = previewText,
-                            style = TextStyleForOutput(previewText),
-                            color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
-                            textAlign = TextAlign.End,
-                            maxLines = 1,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("calculation_preview")
-                        )
+                                .horizontalScroll(landPreviewScrollState),
+                            contentAlignment = Alignment.BottomEnd
+                        ) {
+                            Text(
+                                text = previewText,
+                                style = TextStyleForOutput(previewText),
+                                color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                                textAlign = TextAlign.End,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier
+                                    .testTag("calculation_preview"),
+                                fontFamily = FontFamily.SansSerif
+                            )
+                        }
                     }
                 }
             }
