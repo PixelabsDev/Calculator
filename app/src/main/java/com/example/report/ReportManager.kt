@@ -24,7 +24,7 @@ data class UserReport(
 class ReportManager(private val context: Context) {
 
     companion object {
-        const val DEVELOPER_EMAIL = "akhileshsingh.hq@gmail.com"
+        const val DEVELOPER_EMAIL = "hello@pixelabs.in"
     }
 
     fun createEmailIntent(report: UserReport): Intent {

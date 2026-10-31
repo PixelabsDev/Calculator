@@ -1994,7 +1994,7 @@ fun PrivacyAndTermsScreen(
                     )
                 )
                 Text(
-                    text = "Calculator by pixelabs.in • Official Terms",
+                    text = "Calculator by PixelabsDev • Official Terms",
                     style = MaterialTheme.typography.labelMedium.copy(
                         color = subtextColor
                     )
@@ -2094,7 +2094,7 @@ fun PrivacyAndTermsScreen(
                                 )
                             )
                             Text(
-                                text = "Developed & Published by pixelabs.in",
+                                text = "Developed & Published by PixelabsDev",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = accentColor,
                                     fontWeight = FontWeight.SemiBold
@@ -2104,7 +2104,7 @@ fun PrivacyAndTermsScreen(
                     }
 
                     Text(
-                        text = "Last updated: September 2026. This comprehensive legal document outlines our commitment to user privacy, offline local computing standards, and the terms of service governing this application.",
+                        text = "Last updated: October 2026. This comprehensive legal document outlines our commitment to user privacy, offline local computing standards, and the terms of service governing this application.",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = subtextColor,
                             lineHeight = 18.sp
@@ -2127,7 +2127,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "1",
                     title = "Publisher Identity & Contact",
-                    body = "This software is designed, engineered, and published by pixelabs.in. We treat user privacy with absolute priority. You can reach our technical and legal support team anytime at support@pixelabs.in or via our website at https://pixelabs.in.",
+                    body = "This software is designed, engineered, and published by PixelabsDev (Pixelabs Digital Services). We treat user privacy with absolute priority. You can reach our technical and legal support team anytime at hello@pixelabs.in or via our website at https://pixelabs.in.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2156,8 +2156,8 @@ fun PrivacyAndTermsScreen(
 
                 LegalSectionCard(
                     number = "4",
-                    title = "Optional Google Account Cloud Backup",
-                    body = "If you choose to sign in with your Google Account, the app uses official Google Identity and Play Services Credential Manager APIs strictly to authenticate and optionally backup your calculation logs. We do not access your contacts, files, emails, or personal Google profile details beyond the basic authorized account identifier.",
+                    title = "100% Offline Architecture & Zero Cloud Backup",
+                    body = "This application operates 100% offline with zero cloud backup or remote account synchronization. All calculations and history entries remain exclusively on your device hardware, guaranteeing complete privacy and zero data collection.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2177,7 +2177,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "6",
                     title = "Zero Advertising & No Data Selling",
-                    body = "pixelabs.in does not monetize this application through advertising networks, trackers, data brokers, or behavioral analytics SDKs. We do not sell, rent, or trade any user data to third parties under any circumstances.",
+                    body = "PixelabsDev does not monetize this application through advertising networks, trackers, data brokers, or behavioral analytics SDKs. We do not sell, rent, or trade any user data to third parties under any circumstances.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2187,7 +2187,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "7",
                     title = "System Permissions Explained",
-                    body = "• VIBRATE: Required to provide tactile haptic feedback during keypad button presses (can be enabled/disabled in settings).\n• INTERNET: Used strictly for optional Google Account authentication and cloud backup when explicitly initiated by the user.",
+                    body = "• VIBRATE: Required to provide tactile haptic feedback during keypad button presses for an authentic calculator feel (can be adjusted in device settings).\n• Offline Privacy: The app operates 100% offline with zero cloud backup, tracking, or network transmission of your personal calculation entries.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2208,7 +2208,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "1",
                     title = "Acceptance of Agreement",
-                    body = "By downloading, installing, accessing, or using Calculator by pixelabs.in, you agree to comply with and be bound by these Terms and Conditions. If you disagree with any part of these terms, please discontinue use of the application.",
+                    body = "By downloading, installing, accessing, or using Calculator by PixelabsDev, you agree to comply with and be bound by these Terms and Conditions. If you disagree with any part of these terms, please discontinue use of the application.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2218,7 +2218,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "2",
                     title = "Software License & Permitted Use",
-                    body = "pixelabs.in grants you a personal, non-transferable, non-exclusive, revocable license to use this calculator application for personal, educational, research, engineering, and commercial computational purposes in accordance with these terms.",
+                    body = "PixelabsDev grants you a personal, non-transferable, non-exclusive, revocable license to use this calculator application for personal, educational, research, engineering, and commercial computational purposes in accordance with these terms.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2238,7 +2238,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "4",
                     title = "Intellectual Property Rights",
-                    body = "All algorithms, source code, user interface designs, custom graphic icons, typography pairings, and pixelabs.in brand assets are the exclusive intellectual property of pixelabs.in and protected under international copyright and intellectual property laws.",
+                    body = "All algorithms, source code, user interface designs, custom graphic icons, typography pairings, and PixelabsDev brand assets are the exclusive intellectual property of PixelabsDev and protected under international copyright and intellectual property laws.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2248,7 +2248,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "5",
                     title = "Software Updates & Modifications",
-                    body = "pixelabs.in reserves the right to periodically release software updates, enhance features, optimize performance, and adjust mathematical models to improve system stability and user experience.",
+                    body = "PixelabsDev reserves the right to periodically release software updates, enhance features, optimize performance, and adjust mathematical models to improve system stability and user experience.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2258,7 +2258,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "6",
                     title = "Limitation of Liability",
-                    body = "To the maximum extent permitted by applicable law, pixelabs.in and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from the use or inability to use this software.",
+                    body = "To the maximum extent permitted by applicable law, PixelabsDev and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from the use or inability to use this software.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2268,7 +2268,7 @@ fun PrivacyAndTermsScreen(
                 LegalSectionCard(
                     number = "7",
                     title = "Governing Law & Inquiries",
-                    body = "These terms shall be governed by and construed in accordance with applicable laws. For inquiries regarding licensing, enterprise usage, or terms clarification, please contact support@pixelabs.in.",
+                    body = "These terms shall be governed by and construed in accordance with applicable laws. For inquiries regarding licensing, enterprise usage, or terms clarification, please contact hello@pixelabs.in.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2298,7 +2298,7 @@ fun PrivacyAndTermsScreen(
                         )
                     )
                     Text(
-                        text = "• Official Website: https://pixelabs.in\n• Support Email: support@pixelabs.in\n• Application: Calculator for Android",
+                        text = "• Official Publisher: PixelabsDev\n• Support Email: hello@pixelabs.in\n• Official Website: https://pixelabs.in\n• Application: Calculator for Android",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = subtextColor,
                             lineHeight = 20.sp
@@ -2332,7 +2332,7 @@ fun PrivacyAndTermsScreen(
 
             // Footer Copyright
             Text(
-                text = "© 2026 pixelabs.in • All rights reserved.",
+                text = "© 2026 PixelabsDev. All rights reserved.",
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = subtextColor,
                     textAlign = TextAlign.Center
