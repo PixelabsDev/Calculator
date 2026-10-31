@@ -114,8 +114,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.auth.AuthState
-import com.example.auth.GoogleUserAccount
 import com.example.calculator.CalculatorViewModel
 import com.example.data.HistoryEntry
 import com.example.integrity.DeviceSecurityReport
@@ -166,14 +164,12 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
     val isInvMode by viewModel.isInvMode.collectAsState()
     val isScientificExpanded by viewModel.isScientificExpanded.collectAsState()
     val historyList by viewModel.historyState.collectAsState()
-    val authState by viewModel.authState.collectAsState()
     val securityReport by viewModel.deviceSecurityReport.collectAsState()
     val isCheckingIntegrity by viewModel.isCheckingIntegrity.collectAsState()
     val isScreenshotBlocked by viewModel.isScreenshotBlocked.collectAsState()
 
     var showHistoryDrawer by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    var showAccountDialog by remember { mutableStateOf(false) }
     var showIntegrityDialog by remember { mutableStateOf(false) }
     var showPrivacyScreen by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
@@ -288,14 +284,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     modifier = Modifier.testTag("menu_privacy_terms")
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Google Account & Backup") },
-                                    onClick = {
-                                        showAccountDialog = true
-                                        showMenu = false
-                                    },
-                                    modifier = Modifier.testTag("menu_google_account")
-                                )
-                                DropdownMenuItem(
                                     text = { Text("Device Integrity & Security") },
                                     onClick = {
                                         viewModel.checkDeviceIntegrity()
@@ -312,7 +300,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Report Issue & Feedback") },
+                                    text = { Text("Send Feedback") },
                                     onClick = {
                                         showReportDialog = true
                                         showMenu = false
@@ -397,101 +385,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 .weight(1f)
                                 .padding(horizontal = 20.dp, vertical = 8.dp)
                         ) {
-                            // Google Account Cloud Backup Header Banner
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                                    .testTag("google_cloud_backup_banner"),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isDark) Color(0xFF221E2C) else Color(0xFFF1EBF7)
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        GoogleGIcon(modifier = Modifier.size(28.dp))
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column {
-                                            when (val state = authState) {
-                                                is AuthState.SignedIn -> {
-                                                    Text(
-                                                        text = state.user.displayName,
-                                                        style = MaterialTheme.typography.titleSmall.copy(
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            color = if (isDark) Color(0xFFF3EDFF) else Color(0xFF191622)
-                                                        )
-                                                    )
-                                                    Text(
-                                                        text = "Cloud Sync: ${state.user.lastSyncedTime ?: "Active"}",
-                                                        style = MaterialTheme.typography.bodySmall.copy(
-                                                            color = if (isDark) Color(0xFFA5D6A7) else Color(0xFF2E7D32),
-                                                            fontSize = 11.sp
-                                                        )
-                                                    )
-                                                }
-                                                is AuthState.Loading -> {
-                                                    Text(
-                                                        text = "Signing in with Google...",
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            color = if (isDark) Color(0xFFF3EDFF) else Color(0xFF191622)
-                                                        )
-                                                    )
-                                                }
-                                                else -> {
-                                                    Text(
-                                                        text = "Save History to Google",
-                                                        style = MaterialTheme.typography.titleSmall.copy(
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            color = if (isDark) Color(0xFFF3EDFF) else Color(0xFF191622)
-                                                        )
-                                                    )
-                                                    Text(
-                                                        text = "Backup & sync calculations safely",
-                                                        style = MaterialTheme.typography.bodySmall.copy(
-                                                            color = if (isDark) Color(0xFFB0AAB8) else Color(0xFF5A5565),
-                                                            fontSize = 11.sp
-                                                        )
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    Button(
-                                        onClick = {
-                                            if (authState is AuthState.SignedIn) {
-                                                showAccountDialog = true
-                                            } else {
-                                                viewModel.signInWithGoogle(context)
-                                            }
-                                        },
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4),
-                                            contentColor = if (isDark) Color(0xFF381E72) else Color(0xFFFFFFFF)
-                                        ),
-                                        modifier = Modifier.testTag("account_sync_button")
-                                    ) {
-                                        Text(
-                                            text = if (authState is AuthState.SignedIn) "Account" else "Sign In",
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-
                             if (historyList.isNotEmpty()) {
                                 Text(
                                     text = "Calculation History",
@@ -1100,16 +993,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
 }
 }
 
-        if (showAccountDialog) {
-            GoogleAccountDialog(
-                viewModel = viewModel,
-                authState = authState,
-                historyCount = historyList.size,
-                onDismiss = { showAccountDialog = false },
-                isDark = isDark
-            )
-        }
-
         if (showIntegrityDialog) {
             DeviceIntegrityDialog(
                 viewModel = viewModel,
@@ -1123,7 +1006,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
         if (showReportDialog) {
             ReportIssueDialog(
                 viewModel = viewModel,
-                authState = authState,
                 onDismiss = { showReportDialog = false },
                 isDark = isDark
             )
@@ -1581,279 +1463,6 @@ private fun TextStyleForOutput(result: String) = when {
 }
 
 @Composable
-fun GoogleAccountDialog(
-    viewModel: CalculatorViewModel,
-    authState: AuthState,
-    historyCount: Int,
-    onDismiss: () -> Unit,
-    isDark: Boolean
-) {
-    val context = LocalContext.current
-    var showCustomInput by remember { mutableStateOf(false) }
-    var customName by remember { mutableStateOf("") }
-    var customEmail by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("dialog_google_account"),
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                GoogleGIcon(modifier = Modifier.size(24.dp))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "Google Account & Backup",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                when (authState) {
-                    is AuthState.SignedIn -> {
-                        val user = authState.user
-                        Card(
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDark) Color(0xFF2C2834) else Color(0xFFECE6F0)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isDark) Color(0xFF7E5762) else Color(0xFF6750A4)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = user.displayName.firstOrNull()?.uppercase() ?: "G",
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = user.displayName,
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = if (isDark) Color(0xFFE6E1E5) else Color(0xFF1C1B1F)
-                                        )
-                                    )
-                                    Text(
-                                        text = user.email,
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            color = if (isDark) Color(0xFF9E9B9F) else Color(0xFF7D7A7F)
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        // Cloud Sync Status Box
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDark) Color(0xFF1B2E1E) else Color(0xFFE8F5E9)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    CheckCircleBadgeIcon(modifier = Modifier.size(16.dp), color = if (isDark) Color(0xFFA5D6A7) else Color(0xFF2E7D32))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Cloud History Sync Active",
-                                        style = MaterialTheme.typography.labelLarge.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isDark) Color(0xFFA5D6A7) else Color(0xFF2E7D32)
-                                        )
-                                    )
-                                }
-                                Text(
-                                    text = "$historyCount calculations backed up safely.",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = if (isDark) Color(0xFFC8E6C9) else Color(0xFF388E3C)
-                                    )
-                                )
-                                Text(
-                                    text = "Last synced: ${user.lastSyncedTime ?: "Just now"}",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = if (isDark) Color(0xFF81C784) else Color(0xFF4CAF50),
-                                        fontSize = 11.sp
-                                    )
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Button(
-                                onClick = { viewModel.syncHistoryCloud() },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("btn_sync_now"),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isDark) Color(0xFF4A4458) else Color(0xFF6750A4)
-                                )
-                            ) {
-                                Text("Sync Now")
-                            }
-
-                            OutlinedButton(
-                                onClick = { viewModel.signOut() },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("btn_sign_out"),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text("Sign Out")
-                            }
-                        }
-                    }
-
-                    is AuthState.Loading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                                Text(
-                                    text = "Connecting to Google Account...",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-
-                    else -> {
-                        Text(
-                            text = "Sign in with your Google Account to automatically save and sync your calculation history safely across devices.",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = if (isDark) Color(0xFFCAC4D0) else Color(0xFF49454F)
-                            )
-                        )
-
-                        Button(
-                            onClick = { viewModel.signInWithGoogle(context) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                                .testTag("btn_sign_in_google"),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isDark) Color(0xFF4A4458) else Color(0xFF6750A4)
-                            )
-                        ) {
-                            GoogleGIcon(modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Sign in with Google",
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
-
-                        if (!showCustomInput) {
-                            OutlinedButton(
-                                onClick = { showCustomInput = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Connect Custom Google ID")
-                            }
-                        } else {
-                            Card(
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isDark) Color(0xFF252329) else Color(0xFFF3EDF7)
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Text(
-                                        text = "Direct Google Profile Connect",
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
-                                    )
-                                    OutlinedTextField(
-                                        value = customName,
-                                        onValueChange = { customName = it },
-                                        label = { Text("Display Name") },
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    OutlinedTextField(
-                                        value = customEmail,
-                                        onValueChange = { customEmail = it },
-                                        label = { Text("Google Email") },
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    Button(
-                                        onClick = {
-                                            if (customEmail.isNotBlank()) {
-                                                viewModel.signInWithCustomAccount(customName, customEmail)
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("Save & Connect")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Close")
-            }
-        }
-    )
-}
-
-@Composable
 fun DeviceIntegrityDialog(
     viewModel: CalculatorViewModel,
     report: DeviceSecurityReport?,
@@ -2002,56 +1611,6 @@ fun IntegrityDetailRow(label: String, value: String, isDark: Boolean) {
                 color = if (isDark) Color(0xFFE6E1E5) else Color(0xFF1C1B1F),
                 fontWeight = FontWeight.SemiBold
             )
-        )
-    }
-}
-
-@Composable
-fun GoogleGIcon(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val center = Offset(w / 2f, h / 2f)
-        val radius = w * 0.42f
-
-        // Draw Google styled colorful "G" ring
-        // Red arc (top)
-        drawArc(
-            color = Color(0xFFEA4335),
-            startAngle = 180f,
-            sweepAngle = 100f,
-            useCenter = false,
-            style = Stroke(width = 3.dp.toPx())
-        )
-        // Yellow arc (left-bottom)
-        drawArc(
-            color = Color(0xFFFBBC05),
-            startAngle = 100f,
-            sweepAngle = 80f,
-            useCenter = false,
-            style = Stroke(width = 3.dp.toPx())
-        )
-        // Green arc (bottom)
-        drawArc(
-            color = Color(0xFF34A853),
-            startAngle = 20f,
-            sweepAngle = 80f,
-            useCenter = false,
-            style = Stroke(width = 3.dp.toPx())
-        )
-        // Blue arc & crossbar (right)
-        drawArc(
-            color = Color(0xFF4285F4),
-            startAngle = 280f,
-            sweepAngle = 100f,
-            useCenter = false,
-            style = Stroke(width = 3.dp.toPx())
-        )
-        drawLine(
-            color = Color(0xFF4285F4),
-            start = center,
-            end = Offset(center.x + radius * 0.9f, center.y),
-            strokeWidth = 3.dp.toPx()
         )
     }
 }

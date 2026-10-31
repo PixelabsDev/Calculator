@@ -4,15 +4,12 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.auth.AuthState
-import com.example.auth.GoogleAuthManager
 import com.example.data.AppDatabase
 import com.example.data.HistoryEntry
 import com.example.data.HistoryRepository
 import com.example.integrity.DeviceIntegrityChecker
 import com.example.integrity.DeviceSecurityReport
 import com.example.report.ReportManager
-import com.example.report.ReportSubmitState
 import com.example.report.UserReport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,10 +28,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
 
     private val prefs = application.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
     private val repository: HistoryRepository
-    private val authManager = GoogleAuthManager(application)
     private val integrityChecker = DeviceIntegrityChecker(application)
-
-    val authState: StateFlow<AuthState> = authManager.authState
 
     private val _deviceSecurityReport = MutableStateFlow<DeviceSecurityReport?>(null)
     val deviceSecurityReport: StateFlow<DeviceSecurityReport?> = _deviceSecurityReport.asStateFlow()
@@ -54,40 +48,26 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     val reportManager = ReportManager(application)
-    val reportSubmitState: StateFlow<ReportSubmitState> = reportManager.submitState
 
-    fun resetReportSubmitState() = reportManager.resetSubmitState()
-
-    fun submitReport(category: String, title: String, description: String, email: String) {
-        viewModelScope.launch {
-            val report = UserReport(
-                category = category,
-                title = title,
-                description = description,
-                email = email,
-                isRadMode = _isRadMode.value
-            )
-            reportManager.submitReport(report)
-        }
-    }
-
-    fun createEmailIntent(category: String, title: String, description: String, email: String): android.content.Intent {
+    fun createEmailIntent(category: String, title: String, description: String, email: String, includeDiagnostics: Boolean): android.content.Intent {
         val report = UserReport(
             category = category,
             title = title,
             description = description,
             email = email,
+            includeDiagnostics = includeDiagnostics,
             isRadMode = _isRadMode.value
         )
         return reportManager.createEmailIntent(report)
     }
 
-    fun getFormattedReportText(category: String, title: String, description: String, email: String): String {
+    fun getFormattedReportText(category: String, title: String, description: String, email: String, includeDiagnostics: Boolean): String {
         val report = UserReport(
             category = category,
             title = title,
             description = description,
             email = email,
+            includeDiagnostics = includeDiagnostics,
             isRadMode = _isRadMode.value
         )
         return reportManager.getFormattedReportText(report)
@@ -414,30 +394,6 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun isOperator(char: Char): Boolean {
         return char == '+' || char == '-' || char == '×' || char == '÷' || char == '^'
-    }
-
-    fun signInWithGoogle(activityContext: Context) {
-        viewModelScope.launch {
-            authManager.signInWithGoogle(activityContext)
-        }
-    }
-
-    fun signInWithCustomAccount(name: String, email: String) {
-        viewModelScope.launch {
-            authManager.signInWithCustomGoogle(name, email)
-        }
-    }
-
-    fun signOut() {
-        viewModelScope.launch {
-            authManager.signOut()
-        }
-    }
-
-    fun syncHistoryCloud() {
-        viewModelScope.launch {
-            authManager.updateSyncTime()
-        }
     }
 
     fun checkDeviceIntegrity() {
