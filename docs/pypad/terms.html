@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Terms of Service | PyPad</title>
-  <meta name="description" content="Terms of Service for PyPad (Mobile Py IDE) by Pixelabs. Code ownership, sandbox policies, and acceptable use.">
+  <meta name="description" content="Terms of Service for PyPad (Mobile Py IDE) by Pixelabs. Code ownership, host server execution, and sandbox policies.">
   <link rel="stylesheet" href="../assets/css/legal.css">
   <script src="../assets/js/theme.js"></script>
 </head>
@@ -45,42 +45,42 @@
     </div>
 
     <h2>1. Agreement to Terms</h2>
-    <p>By accessing, deploying, or using PyPad (Mobile Py IDE) ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not access or use the Service.</p>
+    <p>By accessing, deploying, or utilizing the PyPad (Mobile Py IDE) web application ("the Service"), you agree to be bound by these Terms of Service. If you do not accept these terms, do not access or use the Service.</p>
 
-    <h2>2. User Intellectual Property & Code Ownership</h2>
+    <h2>2. Intellectual Property & Code Ownership</h2>
     <div class="notice">
-      <p><strong>You Own Your Code:</strong> You retain 100% intellectual property ownership, copyright, and patent rights over any scripts, algorithms, code, and files you write, run, or store in PyPad. Pixelabs claims zero ownership or rights over your code.</p>
+      <p><strong>You Own Your Code:</strong> You retain 100% intellectual property ownership, copyright, and patent rights over any scripts, algorithms, code, and files you write, submit, or store in PyPad. Pixelabs claims zero ownership, license, or rights over your code.</p>
     </div>
 
-    <h2>3. Sandbox Boundaries & Acceptable Use</h2>
-    <p>PyPad provides a shared, resource-contained computing environment. You agree to use the Service responsibly and must NOT:</p>
+    <h2>3. Host Server Execution & Acceptable Use Policy</h2>
+    <p>PyPad executes your code on a remote host server environment. Because computation runs on server hardware, you agree to utilize the Service responsibly and must NOT:</p>
     <ul>
-      <li>Attempt to bypass or exploit the pre-execution code validator (<code>validator.js</code>) or subprocess isolation barriers.</li>
-      <li>Attempt to execute unauthorized system commands, spawn arbitrary processes, or import blocked system/OS modules (including <code>os</code>, <code>subprocess</code>, <code>ctypes</code>, or <code>resource</code>).</li>
-      <li>Attempt to initiate unauthorized outbound network sockets or ports using blocked modules (including <code>socket</code>, <code>ssl</code>, <code>ftplib</code>, or <code>telnetlib</code>).</li>
-      <li>Launch denial-of-service attempts, fork bombs, cryptocurrency miners, or memory exhaustion attacks against the server.</li>
-      <li>Attempt to access, read, or modify files outside your designated workspace directory or traverse path structures (e.g., using <code>../</code>).</li>
+      <li>Attempt to bypass or tamper with the pre-execution code validator (<code>validator.js</code>) or subprocess sandbox isolation barriers.</li>
+      <li>Attempt to execute unauthorized host operating system commands, spawn arbitrary processes, or import blocked system/OS modules (including <code>os</code>, <code>subprocess</code>, <code>ctypes</code>, <code>signal</code>, or <code>resource</code>).</li>
+      <li>Attempt to open unauthorized network sockets, initiate port scanning, or establish external network connections using blocked modules (including <code>socket</code>, <code>ssl</code>, <code>ftplib</code>, or <code>telnetlib</code>).</li>
+      <li>Launch denial-of-service attempts, fork bombs, cryptocurrency mining scripts, or intentional memory exhaustion attacks against the host server.</li>
+      <li>Attempt to access, read, or modify files outside your designated server workspace directory or traverse path structures (e.g., using <code>../</code>).</li>
     </ul>
 
-    <h2>4. Resource Quotas & Execution Limits</h2>
-    <p>To ensure fair access and server stability, PyPad enforces automated resource constraints:</p>
+    <h2>4. Host Server Resource Quotas & Limits</h2>
+    <p>To preserve host server stability and availability for all users, PyPad automatically enforces technical limits:</p>
     <ul>
-      <li><strong>Execution Timeouts:</strong> Scripts exceeding standard runtime limits or idle thresholds are automatically terminated.</li>
-      <li><strong>Memory & Process Caps:</strong> Subprocesses are constrained by system <code>ulimit</code> memory caps.</li>
-      <li><strong>Workspace Quotas:</strong> Workspace file storage is bounded by per-user and global byte limits. Expired or inactive ephemeral workspaces may be cleaned periodically by automated sweepers.</li>
+      <li><strong>Execution Timeouts:</strong> Long-running scripts or idle interactive sessions are automatically terminated once time limits are exceeded.</li>
+      <li><strong>Subprocess Memory Limits:</strong> Subprocesses are bounded by Linux system <code>ulimit</code> memory caps.</li>
+      <li><strong>Server Workspace Quotas:</strong> Workspace storage is capped by per-user and global byte limits. Expired or inactive workspaces may be cleaned periodically by automated background sweepers.</li>
     </ul>
-    <p>Always maintain your own local backups of valuable scripts and files.</p>
+    <p>You agree to maintain local copies and backups of your important code and files.</p>
 
     <h2>5. Disclaimer of Warranties ("AS IS")</h2>
-    <p>THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR UNINTERRUPTED EXECUTION. PIXELABS DOES NOT WARRANT THAT CODE EXECUTION WILL BE ERROR-FREE OR THAT SAVED WORKSPACES WILL BE PERMANENTLY PRESERVED.</p>
+    <p>THE SERVICE AND SERVER-SIDE EXECUTION ENGINE ARE PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, FREEDOM FROM INTERRUPTIONS, OR DATA PRESERVATION. PIXELABS DOES NOT WARRANT THAT SERVER EXECUTION WILL BE UNINTERRUPTED OR ERROR-FREE.</p>
 
     <h2>6. Limitation of Liability</h2>
-    <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL PIXELABS DIGITAL SERVICES, ITS AUTHORS, OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOSS OF CODE, LOSS OF DATA, SYSTEM DOWNTIME, OR BUSINESS INTERRUPTION ARISING FROM THE USE OF THE SERVICE.</p>
+    <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL PIXELABS DIGITAL SERVICES, ITS AUTHORS, OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOSS OF CODE, LOSS OF DATA, SYSTEM DOWNTIME, OR BUSINESS INTERRUPTION ARISING OUT OF THE USE OF PYPAD.</p>
 
     <h2>7. Governing Law</h2>
     <p>These Terms shall be governed by and construed in accordance with the laws of India. Any legal proceedings arising out of or related to these Terms shall be subject to the exclusive jurisdiction of the competent courts of India.</p>
 
-    <h2>8. Contact</h2>
+    <h2>8. Contact Information</h2>
     <p>For questions or notices regarding these Terms, please contact:</p>
     <ul>
       <li><strong>Entity:</strong> Pixelabs Digital Services</li>

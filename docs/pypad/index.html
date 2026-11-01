@@ -38,29 +38,30 @@
     </nav>
 
     <h1>PyPad</h1>
-    <p class="subtitle">A lightweight, sandboxed Python IDE for phone and desktop browsers. Features a live streaming console with real-time interactive <code>input()</code>, zero npm dependencies, and an isolated runner.</p>
+    <p class="subtitle">A lightweight, sandboxed Python IDE for phone and desktop browsers. Write code in your browser and execute it on a secure host server with live streaming terminal output and interactive <code>input()</code> support.</p>
 
     <h2>Documentation & Policies</h2>
     <div class="service-list">
       <article class="service-item">
         <h3 class="service-name"><a href="privacy.html">Privacy Policy</a></h3>
-        <p class="service-desc">Complete disclosure of PyPad's ephemeral execution engine, isolated per-user workspace storage, AST code validator, zero telemetry, and cookie-free architecture.</p>
+        <p class="service-desc">Complete disclosure of PyPad's server-side execution architecture, ephemeral temp file containment, persistent workspace storage, and zero telemetry.</p>
       </article>
 
       <article class="service-item">
         <h3 class="service-name"><a href="terms.html">Terms of Service</a></h3>
-        <p class="service-desc">Terms governing code execution, intellectual property ownership (you retain 100% of your code), sandbox security boundaries, and liability limitations.</p>
+        <p class="service-desc">Terms governing server execution limits, code ownership (you retain 100% of your code), sandbox security rules, and acceptable use.</p>
       </article>
     </div>
 
-    <h2>Technical Architecture Commitments</h2>
-    <p>PyPad is engineered with a focus on speed, minimalism, and containment:</p>
+    <h2>Technical Architecture & Execution Model</h2>
+    <p>PyPad operates on a client-server architecture designed for speed, isolation, and minimal footprint:</p>
     <ul>
-      <li><strong>Zero npm Dependencies:</strong> The backend is built exclusively on Node.js built-in standard modules, eliminating third-party supply-chain vulnerabilities.</li>
-      <li><strong>Ephemeral Execution Sandbox:</strong> Scripts run inside isolated temporary directories (<code>/tmp/...</code>) that are automatically purged after execution. Python processes run under <code>python3 -I -B -q -u</code> with strict CPU timeouts and <code>ulimit</code> memory caps.</li>
-      <li><strong>Pre-Execution Code Validation:</strong> Built-in AST validation (<code>validator.js</code>) prevents system-level escapes, blocking OS commands, subprocess spawning, and outbound network socket connections.</li>
-      <li><strong>Live Interactive Console:</strong> Programs stream output in real-time via Server-Sent Events (SSE) and accept mid-run interactive standard input without artificial buffering.</li>
-      <li><strong>Isolated Workspaces:</strong> Persistent files are restricted to a dedicated user space protected by strict directory traversal guards (<code>safePath</code>) and storage quotas.</li>
+      <li><strong>Server-Side Execution:</strong> Python scripts do not execute on your local device hardware. When you click Run, the code is sent to the PyPad host server, where an isolated Python subprocess executes it.</li>
+      <li><strong>Zero npm Dependencies:</strong> The backend is powered purely by Node.js built-in modules, eliminating external dependency vulnerabilities.</li>
+      <li><strong>Ephemeral Sandbox Runner:</strong> On the host server, scripts are placed in temporary directories (<code>/tmp/...</code>) that are automatically wiped after execution. Subprocesses run under <code>python3 -I -B -q -u</code> with strict CPU timeouts and <code>ulimit</code> memory caps.</li>
+      <li><strong>Pre-Execution Code Validator:</strong> An in-memory AST analyzer (<code>validator.js</code>) checks code before launch on the host server, blocking OS manipulation, process creation, and external network socket connections.</li>
+      <li><strong>Live Streaming Console:</strong> Terminal output (<code>stdout</code>, <code>stderr</code>) and interactive input (<code>stdin</code>) stream between your browser and the server subprocess in real time via Server-Sent Events (SSE).</li>
+      <li><strong>Protected Server Workspaces:</strong> Saved workspace files reside in isolated server directories safeguarded by path traversal protection (<code>safePath</code>) and per-user storage caps.</li>
     </ul>
 
     <footer>

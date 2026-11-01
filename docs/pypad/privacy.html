@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy | PyPad</title>
-  <meta name="description" content="Official Privacy Policy for PyPad (Mobile Py IDE) by Pixelabs. Sandboxed execution, zero telemetry, private workspaces.">
+  <meta name="description" content="Official Privacy Policy for PyPad (Mobile Py IDE) by Pixelabs. Server-side sandboxed execution, zero telemetry, private workspaces.">
   <link rel="stylesheet" href="../assets/css/legal.css">
   <script src="../assets/js/theme.js"></script>
 </head>
@@ -45,48 +45,49 @@
     </div>
 
     <div class="notice">
-      <p><strong>Privacy Commitment:</strong> PyPad is a sandboxed Python IDE designed with zero telemetry. We do not track users, log private code to databases, sell personal data, or bundle advertising SDKs.</p>
+      <p><strong>Server-Side Execution Model:</strong> PyPad is a web-based IDE where Python code executes remotely on the host server running the PyPad backend—not on your client device or phone. We do not permanently store executed scripts, monetize user code, or track user activity.</p>
     </div>
 
     <h2>1. Overview</h2>
-    <p>PyPad is developed by Pixelabs Digital Services ("Pixelabs", "we", "us") to provide a lightweight, browser-accessible Python coding environment for mobile devices and desktop computers. This Privacy Policy details how code, execution streams, and workspace files are handled by the PyPad backend.</p>
+    <p>PyPad is developed by Pixelabs Digital Services ("Pixelabs", "we", "us") as a lightweight web development environment accessible from any modern mobile or desktop web browser. This Privacy Policy details how code payloads, terminal streams, and server workspace files are handled when you use PyPad.</p>
 
     <h2>2. Information We Do Not Collect</h2>
     <ul>
-      <li><strong>No Mandatory Personal Identification:</strong> You are not required to provide your name, phone number, physical address, or payment details to use PyPad.</li>
-      <li><strong>No Permanent Code Archiving:</strong> We do not index, analyze, train AI models on, or store executed script code in persistent backend log databases.</li>
-      <li><strong>No Third-Party Analytics or Trackers:</strong> PyPad contains zero tracking pixels, zero analytics SDKs, and zero advertising beacons.</li>
-      <li><strong>No Cross-Site Fingerprinting:</strong> We do not track your activity across other websites or services.</li>
+      <li><strong>No Mandatory Accounts:</strong> You do not need to register, provide an email address, or submit personal identification to write and run code.</li>
+      <li><strong>No Permanent Code Archiving:</strong> We do not store, index, sell, or train machine-learning models on the code you execute.</li>
+      <li><strong>No Third-Party Analytics:</strong> PyPad does not load third-party advertising SDKs, tracking pixels, or user-profiling beacons.</li>
+      <li><strong>No Cross-Site Surveillance:</strong> We do not track your browsing activity across other websites or services.</li>
     </ul>
 
-    <h2>3. Code Execution & Data Flow</h2>
-    <p>When you execute a Python script or interact with the REPL console:</p>
+    <h2>3. Server-Side Code Execution & Stream Handling</h2>
+    <p>When you click Run or type code in PyPad:</p>
     <ul>
-      <li><strong>Ephemeral Execution Sandbox:</strong> Your code is written to an isolated temporary file in system temp space (<code>/tmp/...</code>) solely for the duration of the execution. Once the process completes, errors, or reaches its timeout, the temporary file is immediately and permanently deleted.</li>
-      <li><strong>Live Streaming Streams:</strong> Standard output (<code>stdout</code>), error output (<code>stderr</code>), and interactive inputs (<code>stdin</code>) are streamed in real time over HTTPS using Server-Sent Events (SSE) and WebSockets directly between your browser and the spawned Python subprocess. These terminal streams are not logged to disk.</li>
-      <li><strong>Subprocess Containment:</strong> Python processes run under <code>python3 -I -B -q -u</code> with strict CPU timeouts and <code>ulimit</code> memory limits. The runner blocks raw network socket calls to prevent external connections.</li>
-      <li><strong>Pre-Execution Code Validator:</strong> PyPad's built-in AST validator (<code>validator.js</code>) verifies code in volatile memory prior to execution solely to enforce safety boundaries (e.g., preventing OS-level tampering). The code is not stored during this check.</li>
+      <li><strong>Remote Server Execution:</strong> Your Python script is transmitted securely via HTTPS to the host server where the PyPad backend is deployed. Execution occurs on the host server's CPU inside a dedicated Python subprocess.</li>
+      <li><strong>Ephemeral Execution Sandbox:</strong> On the host server, scripts are written to a temporary directory (<code>/tmp/...</code>) that exists exclusively for the duration of the execution. As soon as the script completes, encounters an error, or reaches its execution timeout, the temporary file is immediately and permanently deleted from the server.</li>
+      <li><strong>Live Streaming Data:</strong> Terminal outputs (<code>stdout</code> and <code>stderr</code>) and real-time interactive input (<code>stdin</code>) are streamed directly between your browser and the server subprocess via Server-Sent Events (SSE) and WebSockets. These real-time streams are held in volatile memory and are not logged to disk.</li>
+      <li><strong>Subprocess Containment & Security:</strong> Server-side subprocesses run under <code>python3 -I -B -q -u</code> with strict CPU timeouts, memory caps (<code>ulimit</code>), and blocked external network sockets.</li>
+      <li><strong>In-Memory AST Safety Check:</strong> Prior to execution, the server's AST validator (<code>validator.js</code>) checks the code in volatile memory to ensure it does not attempt unauthorized operating system or socket operations. The code is never persisted during this verification.</li>
     </ul>
 
-    <h2>4. Workspace Storage</h2>
-    <p>If you utilize PyPad's workspace feature to save scripts and assets:</p>
+    <h2>4. Server Workspace Storage</h2>
+    <p>If you utilize PyPad's persistent workspace feature to save project files:</p>
     <ul>
-      <li>Files are stored within a dedicated, isolated workspace directory on the server.</li>
-      <li>Workspaces are constrained by storage quotas (<code>perUserLimitBytes</code>) and protected by path sanitization (<code>safePath</code>) to prevent directory traversal.</li>
-      <li>An automated background sweeper cleans inactive or expired temporary workspace buffers.</li>
-      <li>You can download, view, or permanently delete your workspace files directly through the Files panel at any time.</li>
+      <li>Your files are stored in an isolated, sandboxed directory on the host server.</li>
+      <li>Workspaces are protected against directory traversal through path sanitization (<code>safePath</code>) and enforced storage quotas (<code>perUserLimitBytes</code>).</li>
+      <li>An automated background cleaner sweeps inactive or expired temporary workspace buffers.</li>
+      <li>You can download, inspect, or delete your workspace files directly from the Files panel in your browser at any time.</li>
     </ul>
 
     <h2>5. Infrastructure & Security Headers</h2>
-    <p>PyPad delivers strict web security headers to protect your session:</p>
+    <p>PyPad is delivered with hardened web security headers:</p>
     <ul>
       <li><code>X-Content-Type-Options: nosniff</code></li>
       <li><code>X-Frame-Options: DENY</code></li>
       <li><code>Referrer-Policy: no-referrer</code></li>
     </ul>
-    <p>Standard server request logs (such as request timestamps and HTTP status codes) are maintained temporarily for system diagnostics and rate-limiting enforcement, and contain no script payload data.</p>
+    <p>Standard edge network logs (such as timestamps, IP addresses, and HTTP status codes) are maintained temporarily by edge CDN providers solely for threat mitigation, rate limiting, and security compliance.</p>
 
-    <h2>6. Contact Us</h2>
+    <h2>6. Contact Information</h2>
     <p>For questions or privacy inquiries regarding PyPad, please contact:</p>
     <ul>
       <li><strong>Organization:</strong> Pixelabs Digital Services</li>
