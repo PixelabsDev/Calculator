@@ -1,6 +1,6 @@
 # MIT License
 
-**Copyright (c) 2026 Pixelabs Digital Services (PixelabsDev) / Vishal Kumar**
+**Copyright (c) 2026 Pixelabs Digital Services (PixelabsDev)**
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

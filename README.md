@@ -162,7 +162,7 @@ Pixelabs Calculator is engineered with privacy as a foundational principle. It i
 - **Central Legal & Trust Center**: [https://policies.pixelabs.in/](https://policies.pixelabs.in/)
 - **Calculator Privacy Policy**: [https://policies.pixelabs.in/calculator/privacy.html](https://policies.pixelabs.in/calculator/privacy.html)
 - **Calculator Terms & Conditions**: [https://policies.pixelabs.in/calculator/terms.html](https://policies.pixelabs.in/calculator/terms.html)
-- **Google Play Direct URL**: [https://policies.pixelabs.in/privacy.html](https://policies.pixelabs.in/privacy.html) (auto-redirect)
+- **Direct Policy URL**: [https://policies.pixelabs.in/privacy.html](https://policies.pixelabs.in/privacy.html) (direct link for Google Play Console)
 
 ---
 
