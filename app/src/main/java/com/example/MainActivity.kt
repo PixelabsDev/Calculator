@@ -23,11 +23,13 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -94,10 +96,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -1522,10 +1526,10 @@ fun KeypadButton(
         label = "btnColorAnim"
     )
 
-    val sizingModifier = if (buttonAspectRatio > 0f) {
-        modifier.aspectRatio(buttonAspectRatio)
-    } else {
-        modifier.fillMaxHeight()
+    val sizingModifier = when {
+        buttonAspectRatio > 0f -> modifier.aspectRatio(buttonAspectRatio)
+        buttonAspectRatio == 0f -> modifier.fillMaxHeight()
+        else -> modifier
     }
 
     Box(
@@ -1868,239 +1872,374 @@ fun LandscapeCalculatorLayout(
     val alertBg = if (isDark) Color(0xFF493E5C) else Color(0xFFFCE8E6)
     val alertTxt = if (isDark) Color(0xFFFFB4AB) else Color(0xFFBA1A1A)
 
-    Row(
+    var isLandScientificExpanded by rememberSaveable { mutableStateOf(true) }
+    val sciWeight by animateFloatAsState(
+        targetValue = if (isLandScientificExpanded) 3f else 0.0001f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "sciWeight"
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Left Pane: Calculation Display Panel (Allocated Left Half)
-        Column(
+        // Top ~26% Screen Height: Dedicated Slim Horizontal Display Panel
+        Surface(
             modifier = Modifier
-                .weight(0.42f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(16.dp))
-                .background(displayBgColor)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.End
+                .fillMaxWidth()
+                .weight(0.26f),
+            shape = RoundedCornerShape(16.dp),
+            color = displayBgColor
         ) {
-            // Input Expression Typography with Horizontal Auto-Scroll
-            val landInputScrollState = rememberScrollState()
-            LaunchedEffect(input) {
-                if (input.isNotEmpty()) {
-                    landInputScrollState.animateScrollTo(landInputScrollState.maxValue)
-                }
-            }
-            Box(
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(landInputScrollState),
-                contentAlignment = Alignment.CenterEnd
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = if (input.isEmpty()) "0" else input,
-                    style = TextStyleForInput(input),
-                    color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier.testTag("calculation_input"),
-                    fontFamily = FontFamily.SansSerif
-                )
-            }
+                // Left Side: Toggle Scientific / Basic Pill Button & RAD Indicator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        onClick = {
+                            vibrate(false)
+                            isLandScientificExpanded = !isLandScientificExpanded
+                        },
+                        shape = CircleShape,
+                        color = if (isLandScientificExpanded) {
+                            if (isDark) Color(0xFF381E72) else Color(0xFFEADDFF)
+                        } else {
+                            if (isDark) Color(0xFF2B2930) else Color(0xFFF3EDF7)
+                        },
+                        modifier = Modifier.testTag("land_scientific_toggle")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            ChevronIcon(
+                                isExpanded = isLandScientificExpanded,
+                                color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68)
+                            )
+                            Text(
+                                text = if (isLandScientificExpanded) "Scientific" else "Basic",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68)
+                                )
+                            )
+                        }
+                    }
 
-            // Output Evaluation Result Typography with Fluid Fade & Slide
-            val landPreviewScrollState = rememberScrollState()
-            LaunchedEffect(result) {
-                if (result.isNotEmpty()) {
-                    landPreviewScrollState.animateScrollTo(landPreviewScrollState.maxValue)
+                    if (isRadMode) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isDark) Color(0xFF381E72) else Color(0xFFEADDFF)
+                        ) {
+                            Text(
+                                text = "RAD",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
+                                )
+                            )
+                        }
+                    }
                 }
-            }
 
-            AnimatedContent(
-                targetState = result,
-                transitionSpec = {
-                    (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                        slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
-                        .togetherWith(
-                            fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
-                        )
-                },
-                label = "landCalculationPreviewAnim"
-            ) { previewText ->
-                if (previewText.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                // Right Side: Single-Line Horizontally Scrollable Expression & Preview
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.End
+                ) {
+                    val landInputScrollState = rememberScrollState()
+                    LaunchedEffect(input) {
+                        if (input.isNotEmpty()) {
+                            landInputScrollState.animateScrollTo(landInputScrollState.maxValue)
+                        }
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(landPreviewScrollState),
+                            .horizontalScroll(landInputScrollState),
                         contentAlignment = Alignment.CenterEnd
                     ) {
                         Text(
-                            text = previewText,
-                            style = TextStyleForOutput(previewText),
-                            color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                            text = if (input.isEmpty()) "0" else input,
+                            style = TextStyleForInput(input),
+                            color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
                             textAlign = TextAlign.End,
                             maxLines = 1,
                             softWrap = false,
-                            modifier = Modifier.testTag("calculation_preview"),
+                            modifier = Modifier.testTag("calculation_input"),
                             fontFamily = FontFamily.SansSerif
                         )
+                    }
+
+                    val landPreviewScrollState = rememberScrollState()
+                    LaunchedEffect(result) {
+                        if (result.isNotEmpty()) {
+                            landPreviewScrollState.animateScrollTo(landPreviewScrollState.maxValue)
+                        }
+                    }
+
+                    AnimatedContent(
+                        targetState = result,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                                slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
+                                .togetherWith(
+                                    fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
+                                )
+                        },
+                        label = "landCalculationPreviewAnim"
+                    ) { previewText ->
+                        if (previewText.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(landPreviewScrollState),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Text(
+                                    text = previewText,
+                                    style = TextStyleForOutput(previewText),
+                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                                    textAlign = TextAlign.End,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.testTag("calculation_preview"),
+                                    fontFamily = FontFamily.SansSerif
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Right Pane: Scientific & Numeric Keypad (5 rows x 7 column grid)
-        CompositionLocalProvider(LocalButtonAspectRatio provides 0f) {
-            Column(
-                modifier = Modifier
-                    .weight(0.58f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(keypadBgColor)
-                    .padding(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                val btnShape = RoundedCornerShape(10.dp)
-                val sciFontSize = 14.sp
-                val numFontSize = 17.sp
-
-                // Row 1: [DEG/RAD Toggle] [√] [π] [AC (weight 2f)] [%] [÷]
+        // Bottom ~74% Screen Height: Keypad Container (3 + 4 Architecture with Oval Keys)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.74f),
+            shape = RoundedCornerShape(16.dp),
+            color = keypadBgColor
+        ) {
+            CompositionLocalProvider(LocalButtonAspectRatio provides -1f) {
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    KeypadButton(
-                        label = if (isRadMode) "RAD" else "DEG",
-                        bgColor = if (isRadMode) activeSciBg else scientificBtnBg,
-                        txtColor = if (isRadMode) activeSciTxt else scientificBtnTxt,
-                        modifier = Modifier.weight(1f),
-                        fontWeight = FontWeight.Bold,
-                        shape = btnShape,
-                        fontSize = sciFontSize
-                    ) { viewModel.toggleRadMode() }
+                    val btnShape = CircleShape
+                    val btnHeight = 40.dp
+                    val sciFontSize = 13.sp
+                    val numFontSize = 16.sp
 
-                    KeypadButton("√", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("√") }
-                    KeypadButton("π", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("π") }
-                    KeypadButton("AC", alertBg, alertTxt, Modifier.weight(2f), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("AC") }
-                    KeypadButton("%", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("%") }
-                    KeypadButton("÷", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("÷") }
-                }
-
-                // Row 2: [sin/sin⁻¹] [cos/cos⁻¹] [tan/tan⁻¹] [7] [8] [9] [×]
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    KeypadButton(if (isInvMode) "sin⁻¹" else "sin", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = 13.sp) { viewModel.handleKeyPress("sin") }
-                    KeypadButton(if (isInvMode) "cos⁻¹" else "cos", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = 13.sp) { viewModel.handleKeyPress("cos") }
-                    KeypadButton(if (isInvMode) "tan⁻¹" else "tan", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = 13.sp) { viewModel.handleKeyPress("tan") }
-                    KeypadButton("7", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("7") }
-                    KeypadButton("8", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("8") }
-                    KeypadButton("9", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("9") }
-                    KeypadButton("×", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("×") }
-                }
-
-                // Row 3: [ln] [log] [^] [4] [5] [6] [-]
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    KeypadButton("ln", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("ln") }
-                    KeypadButton("log", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("log") }
-                    KeypadButton("^", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("^") }
-                    KeypadButton("4", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("4") }
-                    KeypadButton("5", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("5") }
-                    KeypadButton("6", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("6") }
-                    KeypadButton("-", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("-") }
-                }
-
-                // Row 4: [e] [!] [Inv] [1] [2] [3] [+]
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    KeypadButton("e", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("e") }
-                    KeypadButton("!", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("!") }
-                    KeypadButton(
-                        label = "Inv",
-                        bgColor = if (isInvMode) activeSciBg else scientificBtnBg,
-                        txtColor = if (isInvMode) activeSciTxt else scientificBtnTxt,
-                        modifier = Modifier.weight(1f),
-                        fontWeight = FontWeight.Bold,
-                        shape = btnShape,
-                        fontSize = sciFontSize
-                    ) { viewModel.toggleInvMode() }
-
-                    KeypadButton("1", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("1") }
-                    KeypadButton("2", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("2") }
-                    KeypadButton("3", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("3") }
-                    KeypadButton("+", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("+") }
-                }
-
-                // Row 5: [( (1.5f)] [) (1.5f)] [0 (1f)] [. (1f)] [⌫ (1f)] [= (1f)]
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    KeypadButton("(", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("(") }
-                    KeypadButton(")", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress(")") }
-                    KeypadButton("0", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("0") }
-                    KeypadButton(".", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress(".") }
-
-                    // Backspace interactive button
-                    val backspaceInteraction = remember { MutableInteractionSource() }
-                    val isPressed by backspaceInteraction.collectIsPressedAsState()
-                    val backspaceScale by animateFloatAsState(
-                        targetValue = if (isPressed) 0.90f else 1f,
-                        animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
-                        label = "landBackspaceScale"
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .graphicsLayer {
-                                scaleX = backspaceScale
-                                scaleY = backspaceScale
-                            }
-                            .clip(btnShape)
-                            .background(operatorBtnBg)
-                            .clickable(
-                                interactionSource = backspaceInteraction,
-                                indication = ripple(bounded = true)
+                    // Left Side: 3 Columns Scientific Functions (Collapsible)
+                    if (sciWeight > 0.05f) {
+                        Column(
+                            modifier = Modifier
+                                .weight(sciWeight)
+                                .fillMaxHeight()
+                                .clipToBounds()
+                                .graphicsLayer {
+                                    alpha = (sciWeight / 3f).coerceIn(0f, 1f)
+                                },
+                            verticalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            // Row 1: [DEG/RAD Toggle] [√] [π]
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                vibrate(false)
-                                viewModel.handleKeyPress("⌫")
+                                KeypadButton(
+                                    label = if (isRadMode) "RAD" else "DEG",
+                                    bgColor = if (isRadMode) activeSciBg else scientificBtnBg,
+                                    txtColor = if (isRadMode) activeSciTxt else scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).height(btnHeight),
+                                    fontWeight = FontWeight.Bold,
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.toggleRadMode() }
+
+                                KeypadButton("√", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("√") }
+                                KeypadButton("π", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("π") }
                             }
-                            .testTag("btn_backspace"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        BackspaceIcon(color = operatorBtnTxt)
+
+                            // Row 2: [sin/sin⁻¹] [cos/cos⁻¹] [tan/tan⁻¹]
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                KeypadButton(if (isInvMode) "sin⁻¹" else "sin", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = 12.sp) { viewModel.handleKeyPress("sin") }
+                                KeypadButton(if (isInvMode) "cos⁻¹" else "cos", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = 12.sp) { viewModel.handleKeyPress("cos") }
+                                KeypadButton(if (isInvMode) "tan⁻¹" else "tan", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = 12.sp) { viewModel.handleKeyPress("tan") }
+                            }
+
+                            // Row 3: [ln] [log] [^]
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                KeypadButton("ln", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("ln") }
+                                KeypadButton("log", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("log") }
+                                KeypadButton("^", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("^") }
+                            }
+
+                            // Row 4: [e] [!] [Inv]
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                KeypadButton("e", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("e") }
+                                KeypadButton("!", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("!") }
+                                KeypadButton(
+                                    label = "Inv",
+                                    bgColor = if (isInvMode) activeSciBg else scientificBtnBg,
+                                    txtColor = if (isInvMode) activeSciTxt else scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).height(btnHeight),
+                                    fontWeight = FontWeight.Bold,
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.toggleInvMode() }
+                            }
+
+                            // Row 5: [(] [)]
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                KeypadButton("(", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("(") }
+                                KeypadButton(")", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress(")") }
+                            }
+                        }
                     }
 
-                    // Equals button (aligned in numeric operator column under +)
-                    KeypadButton(
-                        label = "=",
-                        bgColor = equalsBtnBg,
-                        txtColor = equalsBtnTxt,
-                        modifier = Modifier.weight(1f),
-                        fontWeight = FontWeight.Bold,
-                        shape = btnShape,
-                        fontSize = 20.sp
-                    ) { viewModel.handleKeyPress("=") }
+                    // Right Side: 4 Columns Primary Numeric & Operator Keypad
+                    Column(
+                        modifier = Modifier
+                            .weight(4f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        // Row 1: [AC (2f)] [% (1f)] [÷ (1f)]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            KeypadButton("AC", alertBg, alertTxt, Modifier.weight(2f).height(btnHeight), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("AC") }
+                            KeypadButton("%", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("%") }
+                            KeypadButton("÷", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("÷") }
+                        }
+
+                        // Row 2: [7] [8] [9] [×]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            KeypadButton("7", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("7") }
+                            KeypadButton("8", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("8") }
+                            KeypadButton("9", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("9") }
+                            KeypadButton("×", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("×") }
+                        }
+
+                        // Row 3: [4] [5] [6] [-]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            KeypadButton("4", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("4") }
+                            KeypadButton("5", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("5") }
+                            KeypadButton("6", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("6") }
+                            KeypadButton("-", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("-") }
+                        }
+
+                        // Row 4: [1] [2] [3] [+]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            KeypadButton("1", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("1") }
+                            KeypadButton("2", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("2") }
+                            KeypadButton("3", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("3") }
+                            KeypadButton("+", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("+") }
+                        }
+
+                        // Row 5: [0] [.] [⌫] [=]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            KeypadButton("0", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("0") }
+                            KeypadButton(".", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress(".") }
+
+                            // Backspace interactive button
+                            val backspaceInteraction = remember { MutableInteractionSource() }
+                            val isPressed by backspaceInteraction.collectIsPressedAsState()
+                            val backspaceScale by animateFloatAsState(
+                                targetValue = if (isPressed) 0.90f else 1f,
+                                animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                                label = "landBackspaceScale"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(btnHeight)
+                                    .graphicsLayer {
+                                        scaleX = backspaceScale
+                                        scaleY = backspaceScale
+                                    }
+                                    .clip(btnShape)
+                                    .background(operatorBtnBg)
+                                    .clickable(
+                                        interactionSource = backspaceInteraction,
+                                        indication = ripple(bounded = true)
+                                    ) {
+                                        vibrate(false)
+                                        viewModel.handleKeyPress("⌫")
+                                    }
+                                    .testTag("btn_backspace"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                BackspaceIcon(color = operatorBtnTxt)
+                            }
+
+                            // Equals button (aligned in numeric operator column under +)
+                            KeypadButton(
+                                label = "=",
+                                bgColor = equalsBtnBg,
+                                txtColor = equalsBtnTxt,
+                                modifier = Modifier.weight(1f).height(btnHeight),
+                                fontWeight = FontWeight.Bold,
+                                shape = btnShape,
+                                fontSize = 20.sp
+                            ) { viewModel.handleKeyPress("=") }
+                        }
+                    }
                 }
             }
         }
