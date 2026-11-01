@@ -2358,6 +2358,16 @@ fun PrivacyAndTermsScreen(
 
                 LegalSectionCard(
                     number = "5",
+                    title = "User Feedback & Voluntary Submissions",
+                    body = "The application operates fundamentally as an offline computing utility with zero background data collection, tracking, or telemetry. Submitting feedback, suggestions, or bug reports via the in-app tool is strictly voluntary and requires explicit opt-in consent before transmission. When you choose to submit feedback, the data categories processed include: (1) user-entered text (feedback type, subject, and description); (2) an optional contact email address (only if voluntarily provided for follow-up); and (3) optional non-identifiable technical diagnostics (device model, Android OS version, app version, and angle mode) solely to assist in diagnosing and fixing calculation or layout issues. This information is processed exclusively to troubleshoot bugs, refine mathematical formulas, and improve app stability. Feedback data is never sold, rented, shared with data brokers, or used for advertising or marketing tracking.",
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subtextColor = subtextColor,
+                    accentColor = accentColor
+                )
+
+                LegalSectionCard(
+                    number = "6",
                     title = "Device Integrity & Google Play Security",
                     body = "The app integrates Google Play Integrity API checks locally to verify that the app binary has not been modified or tampered with and is running in a genuine Android environment. This check is purely for application security and anti-tampering verification.",
                     cardBg = cardBg,
@@ -2367,7 +2377,7 @@ fun PrivacyAndTermsScreen(
                 )
 
                 LegalSectionCard(
-                    number = "6",
+                    number = "7",
                     title = "Zero Advertising & No Data Selling",
                     body = "PixelabsDev does not monetize this application through advertising networks, trackers, data brokers, or behavioral analytics SDKs. We do not sell, rent, or trade any user data to third parties under any circumstances.",
                     cardBg = cardBg,
@@ -2377,9 +2387,9 @@ fun PrivacyAndTermsScreen(
                 )
 
                 LegalSectionCard(
-                    number = "7",
+                    number = "8",
                     title = "System Permissions Explained",
-                    body = "• VIBRATE: Required to provide tactile haptic feedback during keypad button presses for an authentic calculator feel (can be adjusted in device settings).\n• Offline Privacy: The app operates 100% offline with zero cloud backup, tracking, or network transmission of your personal calculation entries.",
+                    body = "• VIBRATE: Required to provide tactile haptic feedback during keypad button presses for an authentic calculator feel (can be adjusted in device settings).\n• INTERNET: Utilized strictly on-demand when you explicitly initiate and consent to transmitting a feedback or bug report. The core mathematical engine operates 100% offline with zero background network activity.",
                     cardBg = cardBg,
                     textColor = textColor,
                     subtextColor = subtextColor,
@@ -2387,7 +2397,7 @@ fun PrivacyAndTermsScreen(
                 )
 
                 LegalSectionCard(
-                    number = "8",
+                    number = "9",
                     title = "Children & Student Privacy",
                     body = "This application is safe for users of all ages, including children and students. We do not knowingly collect personal data from minors, making it fully compliant with COPPA and GDPR regulations.",
                     cardBg = cardBg,
@@ -2449,6 +2459,16 @@ fun PrivacyAndTermsScreen(
 
                 LegalSectionCard(
                     number = "6",
+                    title = "User Feedback & Submissions License",
+                    body = "Any feedback, bug reports, feature suggestions, or computational ideas you voluntarily submit to PixelabsDev through the application or official communication channels are provided on a non-confidential basis. By submitting feedback, you grant PixelabsDev an irrevocable, perpetual, royalty-free, worldwide license to use, implement, adapt, and incorporate such feedback into the application without any obligation of compensation, accounting, or attribution to you.",
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subtextColor = subtextColor,
+                    accentColor = accentColor
+                )
+
+                LegalSectionCard(
+                    number = "7",
                     title = "Limitation of Liability",
                     body = "To the maximum extent permitted by applicable law, PixelabsDev and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from the use or inability to use this software.",
                     cardBg = cardBg,
@@ -2458,7 +2478,7 @@ fun PrivacyAndTermsScreen(
                 )
 
                 LegalSectionCard(
-                    number = "7",
+                    number = "8",
                     title = "Governing Law & Inquiries",
                     body = "These terms shall be governed by and construed in accordance with applicable laws. For inquiries regarding licensing, enterprise usage, or terms clarification, please contact hello@pixelabs.in.",
                     cardBg = cardBg,

@@ -72,7 +72,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             )
             val result = reportManager.submitReportToSheet(report)
             _reportSubmitState.value = if (result.isSuccess) {
-                ReportSubmitState.Success("Report submitted directly to Google Sheet! Thank you.")
+                ReportSubmitState.Success("Thank you for your feedback! Your response has been submitted successfully.")
             } else {
                 ReportSubmitState.Error(result.exceptionOrNull()?.localizedMessage ?: "Failed to submit. Please check your internet connection or use Email.")
             }
