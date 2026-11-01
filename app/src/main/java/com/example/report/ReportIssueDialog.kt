@@ -23,6 +23,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,12 +33,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -72,6 +75,7 @@ fun ReportIssueDialog(
     var description by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var includeDiagnostics by remember { mutableStateOf(false) }
+    var userConsentAgreed by remember { mutableStateOf(false) }
 
     val cardBg = if (isDark) Color(0xFF1F1B27) else Color(0xFFFAF7FD)
     val inputBorder = if (isDark) Color(0xFF4A4456) else Color(0xFFC7BED4)
@@ -88,25 +92,47 @@ fun ReportIssueDialog(
         },
         modifier = Modifier.testTag("dialog_report_issue"),
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(accentColor.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "📊", fontSize = 20.sp)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(accentColor.copy(alpha = 0.18f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "💬", fontSize = 20.sp)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Send Feedback",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Help us improve the app",
+                            style = MaterialTheme.typography.labelSmall.copy(color = subtextColor)
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Send Feedback",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Text(
-                        text = "Direct Google Sheet • Optional Email",
-                        style = MaterialTheme.typography.labelSmall.copy(color = subtextColor)
+                IconButton(
+                    onClick = {
+                        viewModel.resetReportSubmitState()
+                        onDismiss()
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = subtextColor
                     )
                 }
             }
@@ -307,7 +333,7 @@ fun ReportIssueDialog(
                         )
                     )
 
-                    // Privacy & Consent Checkbox for Diagnostics
+                    // Privacy & Consent Checkbox for Diagnostics (Optional)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -355,6 +381,31 @@ fun ReportIssueDialog(
                             }
                         }
                     }
+
+                    // Mandatory User Consent Checkbox (Required for Play Store offline privacy compliance)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { userConsentAgreed = !userConsentAgreed }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = userConsentAgreed,
+                            onCheckedChange = { userConsentAgreed = it },
+                            colors = CheckboxDefaults.colors(checkedColor = accentColor)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "I voluntarily agree to share this feedback to help improve the application in accordance with our Privacy Policy & Terms.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = textColor,
+                                fontSize = 11.5.sp,
+                                lineHeight = 16.sp
+                            )
+                        )
+                    }
                 }
             }
         },
@@ -365,6 +416,7 @@ fun ReportIssueDialog(
                         viewModel.resetReportSubmitState()
                         onDismiss()
                     },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = accentColor,
@@ -374,93 +426,99 @@ fun ReportIssueDialog(
                     Text("Done", fontWeight = FontWeight.Bold)
                 }
             } else {
-                Button(
-                    onClick = {
-                        if (description.isBlank()) {
-                            Toast.makeText(context, "Please enter some details first", Toast.LENGTH_SHORT).show()
-                        } else {
-                            viewModel.submitReportToSheet(
-                                category = selectedCategory,
-                                title = title.ifBlank { "User Feedback" },
-                                description = description,
-                                email = email,
-                                includeDiagnostics = includeDiagnostics
-                            )
-                        }
-                    },
-                    enabled = submitState !is ReportSubmitState.Submitting,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = accentColor,
-                        contentColor = if (isDark) Color(0xFF381E72) else Color.White
-                    ),
-                    modifier = Modifier.testTag("submit_report_button")
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (submitState is ReportSubmitState.Submitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = if (isDark) Color(0xFF381E72) else Color.White
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Submitting...", fontWeight = FontWeight.Bold)
-                    } else {
-                        Text("🚀 Submit to Sheet", fontWeight = FontWeight.Bold)
+                    // Primary Action: Submit Feedback (Disabled until user explicitly grants consent)
+                    Button(
+                        onClick = {
+                            if (description.isBlank()) {
+                                Toast.makeText(context, "Please enter some details first", Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.submitReportToSheet(
+                                    category = selectedCategory,
+                                    title = title.ifBlank { "User Feedback" },
+                                    description = description,
+                                    email = email,
+                                    includeDiagnostics = includeDiagnostics
+                                )
+                            }
+                        },
+                        enabled = userConsentAgreed && submitState !is ReportSubmitState.Submitting,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = accentColor,
+                            contentColor = if (isDark) Color(0xFF381E72) else Color.White,
+                            disabledContainerColor = if (isDark) Color(0xFF3A3445) else Color(0xFFE0DAE8),
+                            disabledContentColor = if (isDark) Color(0xFF888099) else Color(0xFF9E96A8)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                            .testTag("submit_report_button")
+                    ) {
+                        if (submitState is ReportSubmitState.Submitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = if (isDark) Color(0xFF381E72) else Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Submitting...", fontWeight = FontWeight.Bold)
+                        } else {
+                            Text("Submit Feedback", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+
+                    // Secondary Actions Row: Email and Copy (50/50 split, zero overflow)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val intent = viewModel.createEmailIntent(
+                                    category = selectedCategory,
+                                    title = title.ifBlank { "User Feedback" },
+                                    description = description,
+                                    email = email,
+                                    includeDiagnostics = includeDiagnostics
+                                )
+                                try {
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "No email client found. Use 'Copy' instead.", Toast.LENGTH_LONG).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("✉️ Email", maxLines = 1)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val text = viewModel.getFormattedReportText(
+                                    category = selectedCategory,
+                                    title = title.ifBlank { "User Feedback" },
+                                    description = description.ifBlank { "(No details entered)" },
+                                    email = email,
+                                    includeDiagnostics = includeDiagnostics
+                                )
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Calculator Feedback", text))
+                                Toast.makeText(context, "Feedback details copied!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("📋 Copy", maxLines = 1)
+                        }
                     }
                 }
             }
         },
-        dismissButton = {
-            if (submitState !is ReportSubmitState.Success) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            val intent = viewModel.createEmailIntent(
-                                category = selectedCategory,
-                                title = title.ifBlank { "User Feedback" },
-                                description = description,
-                                email = email,
-                                includeDiagnostics = includeDiagnostics
-                            )
-                            try {
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                Toast.makeText(context, "No email client found. Use 'Copy' instead.", Toast.LENGTH_LONG).show()
-                            }
-                        },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("✉️ Email")
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            val text = viewModel.getFormattedReportText(
-                                category = selectedCategory,
-                                title = title.ifBlank { "User Feedback" },
-                                description = description.ifBlank { "(No details entered)" },
-                                email = email,
-                                includeDiagnostics = includeDiagnostics
-                            )
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Calculator Feedback", text))
-                            Toast.makeText(context, "Feedback details copied!", Toast.LENGTH_SHORT).show()
-                        },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("📋 Copy")
-                    }
-
-                    TextButton(
-                        onClick = {
-                            viewModel.resetReportSubmitState()
-                            onDismiss()
-                        }
-                    ) {
-                        Text("Cancel", color = subtextColor)
-                    }
-                }
-            }
-        }
+        dismissButton = null
     )
 }
