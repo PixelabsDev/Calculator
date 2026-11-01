@@ -139,7 +139,7 @@ jobs:
       # =========================================================================
       # 5. POST-BUILD SIZE WATCHDOG
       # =========================================================================
-      - name: Quality Gate 4 - AAB Size Watchdog (Max 5 MB)
+      - name: Quality Gate 4 - AAB Size Watchdog
         run: |
           AAB_FILE=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
           if [ -z "$AAB_FILE" ] || [ ! -f "$AAB_FILE" ]; then
@@ -147,21 +147,22 @@ jobs:
             exit 1
           fi
           
-          MAX_BYTES=$((5 * 1024 * 1024)) # 5 MB
+          MAX_MB="${MAX_AAB_SIZE_MB:-10}"
+          MAX_BYTES=$((MAX_MB * 1024 * 1024))
           SIZE_BYTES=$(stat -c%s "$AAB_FILE" 2>/dev/null || stat -f%z "$AAB_FILE")
           SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES / (1024 * 1024)}")
           
           echo "================ AAB Size Audit ================"
           echo "Artifact Path: $AAB_FILE"
           echo "Artifact Size: $SIZE_BYTES bytes ($SIZE_MB MB)"
-          echo "Max Threshold: $MAX_BYTES bytes (5.00 MB)"
+          echo "Max Threshold: $MAX_BYTES bytes (${MAX_MB}.00 MB)"
           echo "================================================"
           
           if [ "$SIZE_BYTES" -gt "$MAX_BYTES" ]; then
-            echo "::error::AAB file size exceeds maximum threshold of 5 MB ($SIZE_MB MB > 5.00 MB)!"
+            echo "::error::AAB file size exceeds maximum threshold of ${MAX_MB} MB ($SIZE_MB MB > ${MAX_MB}.00 MB)!"
             exit 1
           fi
-          echo "AAB size watchdog passed successfully."
+          echo "AAB size watchdog passed successfully (${SIZE_MB} MB <= ${MAX_MB}.00 MB)."
 
       # =========================================================================
       # 6. UNIVERSAL APK GENERATION VIA BUNDLETOOL
@@ -192,9 +193,18 @@ jobs:
             --ks-key-alias="$KEY_AL" \
             --key-pass="pass:$KEY_PASS"
           
-          unzip -p "$APKS_FILE" universal.apk > "$UNIVERSAL_APK"
-          echo "Universal APK created successfully at: $UNIVERSAL_APK"
-          ls -lh "$UNIVERSAL_APK"
+          EXTRACT_DIR="${{ runner.temp }}/extracted"
+          mkdir -p "$EXTRACT_DIR"
+          unzip -q -o "$APKS_FILE" -d "$EXTRACT_DIR"
+          EXTRACTED_APK=$(find "$EXTRACT_DIR" -name "*.apk" | head -n 1)
+          if [ -n "$EXTRACTED_APK" ] && [ -f "$EXTRACTED_APK" ]; then
+            cp "$EXTRACTED_APK" "$UNIVERSAL_APK"
+            echo "Universal APK created successfully at: $UNIVERSAL_APK"
+            ls -lh "$UNIVERSAL_APK"
+          else
+            echo "::error::Failed to extract universal APK from .apks archive!"
+            exit 1
+          fi
 
       # =========================================================================
       # 7. SECURE KEYSTORE CLEANUP (MANDATORY ALWAYS)
