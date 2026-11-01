@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy & Terms | Pixelabs Calculator</title>
+  <meta name="description" content="Official Privacy Policy and Terms of Service for Pixelabs Calculator for Android. 100% offline, privacy-first utility with zero trackers.">
+  <meta name="theme-color" content="#141218">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --md-sys-color-background: #0f0e13;
+      --md-sys-color-on-background: #e6e1e5;
+      --md-sys-color-surface: #1b191f;
+      --md-sys-color-surface-variant: #26242c;
+      --md-sys-color-on-surface: #e6e1e5;
+      --md-sys-color-on-surface-variant: #cac4d0;
+      --md-sys-color-primary: #d0bcff;
+      --md-sys-color-on-primary: #381e72;
+      --md-sys-color-primary-container: #4f378b;
+      --md-sys-color-on-primary-container: #eaddff;
+      --md-sys-color-secondary: #ccc2dc;
+      --md-sys-color-outline: #938f99;
+      --md-sys-color-outline-variant: #49454f;
+      --md-sys-color-surface-tint: #d0bcff;
+      --md-sys-color-card-border: rgba(208, 188, 255, 0.12);
+      --badge-bg: rgba(208, 188, 255, 0.1);
+      --badge-text: #d0bcff;
+      --code-bg: #141318;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    [data-theme="light"] {
+      --md-sys-color-background: #fbf8fd;
+      --md-sys-color-on-background: #1b1b1f;
+      --md-sys-color-surface: #ffffff;
+      --md-sys-color-surface-variant: #f0ecf4;
+      --md-sys-color-on-surface: #1b1b1f;
+      --md-sys-color-on-surface-variant: #49454f;
+      --md-sys-color-primary: #6750a4;
+      --md-sys-color-on-primary: #ffffff;
+      --md-sys-color-primary-container: #eaddff;
+      --md-sys-color-on-primary-container: #21005d;
+      --md-sys-color-secondary: #625b71;
+      --md-sys-color-outline: #79747e;
+      --md-sys-color-outline-variant: #cac4d0;
+      --md-sys-color-surface-tint: #6750a4;
+      --md-sys-color-card-border: rgba(103, 80, 164, 0.15);
+      --badge-bg: rgba(103, 80, 164, 0.08);
+      --badge-text: #6750a4;
+      --code-bg: #f4f0f8;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 20px rgba(103, 80, 164, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    }
+
+    body {
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--md-sys-color-background);
+      color: var(--md-sys-color-on-background);
+      line-height: 1.65;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Container */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 20px 80px 20px;
+    }
+
+    /* Header Nav */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0 32px 0;
+      border-bottom: 1px solid var(--md-sys-color-card-border);
+      margin-bottom: 36px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #1b191f;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 3px;
+      padding: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="light"] .brand-logo {
+      background: #2b2831;
+    }
+
+    .brand-logo .tile {
+      border-radius: 3px;
+    }
+    .tile:nth-child(1) { background: #ffffff; }
+    .tile:nth-child(2) { background: #717075; }
+    .tile:nth-child(3) { background: #717075; }
+    .tile:nth-child(4) { background: #ffffff; }
+
+    .brand-title {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-sub {
+      font-size: 0.8rem;
+      color: var(--md-sys-color-on-surface-variant);
+      display: block;
+      margin-top: -2px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-toggle-theme {
+      background: var(--md-sys-color-surface-variant);
+      border: 1px solid var(--md-sys-color-card-border);
+      color: var(--md-sys-color-on-surface);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .btn-github {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+      padding: 8px 16px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 24px 0 40px 0;
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      border: 1px solid var(--md-sys-color-card-border);
+    }
+
+    .hero h1 {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 14px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--md-sys-color-on-surface-variant);
+      max-width: 680px;
+      margin: 0 auto 24px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      background: var(--md-sys-color-surface);
+      border: 1px solid var(--md-sys-color-card-border);
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    /* Tabs Navigation */
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 32px 0;
+      border-bottom: 1px solid var(--md-sys-color-card-border);
+      padding-bottom: 16px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--md-sys-color-on-surface-variant);
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .tab-btn.active {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+
+    /* Document Card */
+    .doc-card {
+      background: var(--md-sys-color-surface);
+      border: 1px solid var(--md-sys-color-card-border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 32px;
+    }
+
+    .doc-header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--md-sys-color-card-border);
+    }
+
+    .doc-header h2 {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--md-sys-color-primary);
+      margin-bottom: 6px;
+    }
+
+    .doc-meta {
+      font-size: 0.88rem;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .section-title {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+      margin: 28px 0 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .doc-card p {
+      margin-bottom: 14px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .doc-card ul {
+      margin: 12px 0 20px 24px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .doc-card li {
+      margin-bottom: 8px;
+    }
+
+    .highlight-box {
+      background: var(--md-sys-color-surface-variant);
+      border-left: 4px solid var(--md-sys-color-primary);
+      padding: 16px 20px;
+      border-radius: 0 12px 12px 0;
+      margin: 20px 0;
+    }
+
+    .highlight-box p {
+      margin: 0;
+      color: var(--md-sys-color-on-surface);
+      font-size: 0.95rem;
+    }
+
+    .highlight-box strong {
+      color: var(--md-sys-color-primary);
+    }
+
+    /* Code block */
+    pre.code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--md-sys-color-card-border);
+      border-radius: 12px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      margin: 16px 0;
+      color: var(--md-sys-color-on-surface);
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 0 20px 0;
+      border-top: 1px solid var(--md-sys-color-card-border);
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--md-sys-color-primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 1.85rem; }
+      .doc-card { padding: 24px 18px; }
+      header { flex-direction: column; gap: 16px; align-items: flex-start; }
+      .nav-actions { width: 100%; justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <a href="https://pixelabs.in" class="brand" target="_blank" rel="noopener">
+        <div class="brand-logo" aria-label="Pixelabs Logo">
+          <div class="tile"></div>
+          <div class="tile"></div>
+          <div class="tile"></div>
+          <div class="tile"></div>
+        </div>
+        <div>
+          <span class="brand-title">Pixelabs</span>
+          <span class="brand-sub">Privacy-First Android Utilities</span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <button class="btn-toggle-theme" id="themeToggle" title="Toggle Theme" aria-label="Toggle theme">🌙</button>
+        <a href="https://github.com/PixelabsDev/Calculator-" class="btn-github" target="_blank" rel="noopener">
+          <span>GitHub</span> ↗
+        </a>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-pill">🛡️ 100% Offline • Zero Telemetry</div>
+      <h1>Calculator Legal & Privacy Center</h1>
+      <p>Transparent documentation outlining our offline architectural commitments, voluntary feedback procedures, and open-source licensing terms.</p>
+      
+      <div class="badge-bar">
+        <span class="badge">Version 19.2.1</span>
+        <span class="badge">Package: com.aistudio.calculator.gtypxz</span>
+        <span class="badge">MIT License</span>
+        <span class="badge">Google Play Verified</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabPrivacyBtn" onclick="switchTab('privacy')">Privacy Policy</button>
+      <button class="tab-btn" id="tabTermsBtn" onclick="switchTab('terms')">Terms & Conditions</button>
+      <button class="tab-btn" id="tabLicenseBtn" onclick="switchTab('license')">MIT License</button>
+    </div>
+
+    <!-- TAB 1: Privacy Policy -->
+    <div id="section-privacy" class="doc-card">
+      <div class="doc-header">
+        <h2>Privacy Policy for Calculator</h2>
+        <div class="doc-meta">
+          <strong>Effective Date:</strong> November 1, 2026 • <strong>Application:</strong> Pixelabs Calculator for Android
+        </div>
+      </div>
+
+      <div class="highlight-box">
+        <p><strong>Core Privacy Guarantee:</strong> Pixelabs Calculator is built as a strictly offline utility. It does not track, collect, monitor, or transmit your mathematical expressions, calculation history, or device identifiers to any remote servers.</p>
+      </div>
+
+      <h3 class="section-title">1. Core Functionality & Offline Operation</h3>
+      <p>The Application is designed primarily as a local utility tool. All arithmetic, scientific functions, trigonometry calculations, and formula evaluations are processed 100% locally on your device's hardware using deterministic on-device parsing algorithms.</p>
+      <ul>
+        <li><strong>No Internet Permission for Core Math:</strong> Standard calculations require zero network access.</li>
+        <li><strong>Local Storage Isolation:</strong> Calculation history entries and user preference themes (System, Dark, Light) are stored strictly inside your device's private sandboxed application storage (via Android SharedPreferences/DataStore).</li>
+        <li><strong>Local Data Control:</strong> Users can wipe or clear past calculation history at any moment using the in-app history trash action with instant local erasure.</li>
+      </ul>
+
+      <h3 class="section-title">2. User Feedback & Voluntary Submissions</h3>
+      <p>The Application connects to the internet <em>only and exclusively</em> when a user voluntarily and deliberately chooses to submit feedback or report an issue via the in-app "Send Feedback" modal dialog.</p>
+      <p>Submitting feedback is entirely optional. When you choose to submit feedback, the following user-provided data is transmitted with your explicit opt-in consent:</p>
+      <ul>
+        <li><strong>Feedback Content:</strong> Category (Bug Report, Calculation, Suggestion, General), subject, and description provided by the user.</li>
+        <li><strong>Email Address (Optional):</strong> Only if voluntarily provided by the user for follow-up communications. You are free to leave this field blank.</li>
+        <li><strong>System Diagnostics (Optional):</strong> Non-identifiable technical diagnostics (such as Android OS version and device manufacturer/model) solely to diagnose hardware-specific layout or calculation defects, collected only if the diagnostic checkbox is explicitly enabled by the user.</li>
+        <li><strong>Device Integrity Checks:</strong> On-device security audits (such as Google Play Integrity verification) are evaluated locally on your device for user awareness and are not transmitted unless explicitly included by the user in a diagnostic report.</li>
+      </ul>
+
+      <h3 class="section-title">3. Data Retention & Deletion Policy</h3>
+      <ul>
+        <li><strong>90-Day Automatic Purge:</strong> All submitted voluntary feedback entries, including any accompanying diagnostic details and optional email addresses, are stored securely and automatically purged/permanently deleted within 90 days of receipt.</li>
+        <li><strong>Anonymous Submissions:</strong> Feedback submitted without an email address is entirely anonymous and contains zero personal identifiers. Because anonymous entries cannot be cryptographically or technically linked to a specific user, individual anonymous submissions cannot be selectively deleted upon request.</li>
+        <li><strong>Identifiable Data Requests:</strong> If you provided an email address during feedback submission and wish to request manual removal of your feedback prior to the 90-day automatic deletion window, you may contact us at <a href="mailto:hello@pixelabs.in" style="color:var(--md-sys-color-primary);">hello@pixelabs.in</a> from that specific email address.</li>
+      </ul>
+
+      <h3 class="section-title">4. Permissions & Third-Party Trackers</h3>
+      <ul>
+        <li><strong>No Sensitive Permissions:</strong> The Application does not request or require sensitive Android permissions such as Location, Camera, Microphone, Contacts, Phone State, or External Storage.</li>
+        <li><strong>Zero Analytics & Zero Ad SDKs:</strong> The Application contains zero third-party advertising SDKs, zero user tracking libraries (e.g., no Firebase Analytics, no Facebook Pixel, no Adjust, no AppsFlyer), and zero automated background telemetry.</li>
+      </ul>
+
+      <h3 class="section-title">5. Children’s Privacy (COPPA & GDPR-K Compliance)</h3>
+      <p>The Application does not knowingly collect personal information from children under the age of 13 (or under the age of 16 in applicable European jurisdictions). The core mathematical utility is completely safe for users of all ages, and feedback submissions require voluntary adult oversight.</p>
+
+      <h3 class="section-title">6. Security & Data Protection</h3>
+      <p>Any voluntary feedback submitted is transmitted using modern cryptographic protocols (TLS 1.3 / HTTPS). We enforce strict security controls to prevent unauthorized access or disclosure of voluntary reports.</p>
+
+      <h3 class="section-title">7. Changes to This Privacy Policy</h3>
+      <p>We may update this Privacy Policy from time to time to reflect regulatory standards or new app enhancements. Any updates will be published on this page with a revised effective date. Continued use of the Application signifies acceptance of any updated terms.</p>
+
+      <h3 class="section-title">8. Contact Us</h3>
+      <p>If you have any questions, suggestions, or data inquiries regarding this Privacy Policy, please contact our team:</p>
+      <ul>
+        <li><strong>Email:</strong> <a href="mailto:hello@pixelabs.in" style="color:var(--md-sys-color-primary);">hello@pixelabs.in</a></li>
+        <li><strong>Publisher:</strong> Pixelabs Digital Services (PixelabsDev)</li>
+        <li><strong>Official Website:</strong> <a href="https://pixelabs.in" target="_blank" rel="noopener" style="color:var(--md-sys-color-primary);">https://pixelabs.in</a></li>
+      </ul>
+    </div>
+
+    <!-- TAB 2: Terms & Conditions -->
+    <div id="section-terms" class="doc-card" style="display: none;">
+      <div class="doc-header">
+        <h2>Terms & Conditions</h2>
+        <div class="doc-meta">
+          <strong>Effective Date:</strong> November 1, 2026 • <strong>Publisher:</strong> Pixelabs Digital Services
+        </div>
+      </div>
+
+      <h3 class="section-title">1. Acceptance of Terms</h3>
+      <p>By downloading, installing, accessing, or using the Calculator application ("Application") developed by Pixelabs Digital Services ("Pixelabs", "we", "us", or "our"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, do not install or use the Application.</p>
+
+      <h3 class="section-title">2. License Grant & Open Source Usage</h3>
+      <p>The Application is licensed under the permissive open-source <strong>MIT License</strong>. You are granted the right to use, copy, modify, merge, publish, and distribute the software subject to the conditions outlined in the license:</p>
+      <pre class="code-block">Copyright (c) 2026 Pixelabs Digital Services (PixelabsDev) / Vishal Kumar
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction...</pre>
+
+      <h3 class="section-title">3. Calculation Accuracy & Disclaimer of Warranties</h3>
+      <p>While Pixelabs makes every effort to ensure the accuracy and reliability of the math engine (including trigonometric, logarithmic, and floating-point computations), <strong>the Application is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind</strong>, either express or implied.</p>
+      <div class="highlight-box">
+        <p><strong>Professional Use Notice:</strong> Do not rely exclusively on the Application for critical engineering, aviation, life-support, or high-stakes financial calculations where an error could result in personal injury, loss of life, or severe financial damage.</p>
+      </div>
+
+      <h3 class="section-title">4. Limitation of Liability</h3>
+      <p>To the maximum extent permitted by applicable law, Pixelabs Digital Services, its developers, contributors, and affiliates shall not be liable for any direct, indirect, incidental, special, consequential, or exemplary damages, including but not limited to damages for loss of profits, calculation errors, data loss, or business interruption arising out of the use or inability to use the Application.</p>
+
+      <h3 class="section-title">5. Acceptable Use</h3>
+      <p>You agree not to use the Application for any unlawful purposes, nor attempt to reverse-engineer, exploit vulnerabilities, or submit abusive, defamatory, or unlawful content through the voluntary feedback mechanism.</p>
+
+      <h3 class="section-title">6. Intellectual Property</h3>
+      <p>All trademarks, service marks, trade names, and developer branding associated with "Pixelabs", "PixelabsDev", and the 4-tile developer insignia are the intellectual property of Pixelabs Digital Services / Vishal Kumar.</p>
+
+      <h3 class="section-title">7. Governing Law</h3>
+      <p>These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions.</p>
+
+      <h3 class="section-title">8. Contact Information</h3>
+      <p>For legal inquiries, copyright questions, or licensing terms, please reach out to <a href="mailto:hello@pixelabs.in" style="color:var(--md-sys-color-primary);">hello@pixelabs.in</a>.</p>
+    </div>
+
+    <!-- TAB 3: MIT License -->
+    <div id="section-license" class="doc-card" style="display: none;">
+      <div class="doc-header">
+        <h2>The MIT License (MIT)</h2>
+        <div class="doc-meta">
+          <strong>Open Source License</strong> • Standard SPDX: MIT
+        </div>
+      </div>
+
+      <p>This software and its source code are licensed under the standard MIT License:</p>
+
+      <pre class="code-block">MIT License
+
+Copyright (c) 2026 Pixelabs Digital Services (PixelabsDev) / Vishal Kumar
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div class="footer-links">
+        <a href="#privacy" onclick="switchTab('privacy'); return false;">Privacy Policy</a>
+        <span>•</span>
+        <a href="#terms" onclick="switchTab('terms'); return false;">Terms of Service</a>
+        <span>•</span>
+        <a href="#license" onclick="switchTab('license'); return false;">MIT License</a>
+        <span>•</span>
+        <a href="https://github.com/PixelabsDev/Calculator-" target="_blank" rel="noopener">GitHub Repository</a>
+      </div>
+      <p>© 2026 Pixelabs Digital Services (PixelabsDev) / Vishal Kumar. All rights reserved.</p>
+      <p style="font-size: 0.8rem; margin-top: 4px; color: var(--md-sys-color-outline);">Crafted with Jetpack Compose & Material You • Designed for everyday efficiency.</p>
+    </footer>
+  </div>
+
+  <script>
+    // Tab Switching Logic
+    function switchTab(tab) {
+      document.getElementById('section-privacy').style.display = tab === 'privacy' ? 'block' : 'none';
+      document.getElementById('section-terms').style.display = tab === 'terms' ? 'block' : 'none';
+      document.getElementById('section-license').style.display = tab === 'license' ? 'block' : 'none';
+
+      document.getElementById('tabPrivacyBtn').classList.toggle('active', tab === 'privacy');
+      document.getElementById('tabTermsBtn').classList.toggle('active', tab === 'terms');
+      document.getElementById('tabLicenseBtn').classList.toggle('active', tab === 'license');
+
+      history.replaceState(null, null, '#' + tab);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Hash routing
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['privacy', 'terms', 'license'].includes(hash)) {
+        switchTab(hash);
+      }
+    });
+
+    // Theme Toggle
+    const themeBtn = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('pixelabs_theme', theme);
+    }
+
+    const savedTheme = localStorage.getItem('pixelabs_theme') || (prefersDark.matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+  </script>
+</body>
+</html>

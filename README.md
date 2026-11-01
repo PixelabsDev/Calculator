@@ -13,7 +13,7 @@
   <b>A modern, privacy-first, offline Android calculator crafted with Jetpack Compose, Material You design, and an enterprise zero-touch CI/CD release pipeline.</b>
 </p>
 
-[**Pixelabs Website**](https://pixelabs.in) • [**Features**](#-features) • [**Architecture**](#-architecture--tech-stack) • [**DevOps & CI/CD**](#-enterprise-devops--cicd) • [**Building**](#-building--testing)
+[**Pixelabs Website**](https://pixelabs.in) • [**Privacy Policy (Live)**](https://pixelabsdev.github.io/Calculator-/) • [**Features**](#-features) • [**Architecture**](#-architecture--tech-stack) • [**DevOps & CI/CD**](#-enterprise-devops--cicd) • [**Building**](#-building--testing)
 
 </div>
 
@@ -158,7 +158,8 @@ flowchart LR
 Pixelabs Calculator is built with privacy as a foundational principle. It does not track, sell, or collect personal data. 
 - Calculations are performed locally on the device's hardware.
 - Optional feedback submissions require explicit, voluntary consent in compliance with Google Play Store policies and global privacy standards.
-- Detailed policy available at: [Privacy Policy & Terms](https://pixelabs.in/privacy).
+- Dedicated GitHub Pages Legal Center: [https://pixelabsdev.github.io/Calculator-/](https://pixelabsdev.github.io/Calculator-/)
+- Canonical policy available at: [Privacy Policy & Terms](https://pixelabs.in/privacy).
 
 ---
 
