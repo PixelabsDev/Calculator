@@ -2637,7 +2637,7 @@ fun PrivacyAndTermsScreen(
                         )
                     )
                     Text(
-                        text = "• Official Publisher: PixelabsDev\n• Support Email: hello@pixelabs.in\n• Official Website: https://pixelabs.in\n• Application: Calculator for Android",
+                        text = "• Official Publisher: PixelabsDev\n• Support Email: hello@pixelabs.in\n• Official Website: https://pixelabs.in\n• Legal Portal: https://policies.pixelabs.in\n• Application: Calculator for Android",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = subtextColor,
                             lineHeight = 20.sp

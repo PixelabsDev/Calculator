@@ -13,7 +13,7 @@
   <b>A modern, privacy-first, offline Android calculator crafted with Jetpack Compose, Material You design, and an enterprise zero-touch CI/CD release pipeline.</b>
 </p>
 
-[**Pixelabs Website**](https://pixelabs.in) • [**Privacy Policy (Live)**](https://pixelabsdev.github.io/Calculator-/) • [**Features**](#-features) • [**Architecture**](#-architecture--tech-stack) • [**DevOps & CI/CD**](#-enterprise-devops--cicd) • [**Building**](#-building--testing)
+[**Pixelabs Website**](https://pixelabs.in) • [**Legal & Privacy Portal**](https://policies.pixelabs.in/) • [**Features**](#-features) • [**Architecture**](#-architecture--tech-stack) • [**DevOps & CI/CD**](#-enterprise-devops--cicd) • [**Building**](#-building--testing)
 
 </div>
 
@@ -155,11 +155,13 @@ flowchart LR
 
 ## 📄 Privacy Policy & Compliance
 
-Pixelabs Calculator is built with privacy as a foundational principle. It does not track, sell, or collect personal data. 
-- Calculations are performed locally on the device's hardware.
-- Optional feedback submissions require explicit, voluntary consent in compliance with Google Play Store policies and global privacy standards.
-- Dedicated GitHub Pages Legal Center: [https://pixelabsdev.github.io/Calculator-/](https://pixelabsdev.github.io/Calculator-/)
-- Canonical policy available at: [Privacy Policy & Terms](https://pixelabs.in/privacy).
+Pixelabs Calculator is engineered with privacy as a foundational principle. It is fully compliant with Google Play Store Developer policies and international data protection standards:
+- **100% Offline Calculations**: All formulas, trigonometry, arithmetic, and evaluations run locally on the device CPU with zero internet permissions.
+- **Zero Background Tracking**: No third-party ad networks, no analytics trackers, and zero telemetry SDKs.
+- **Voluntary User Feedback**: In-app feedback submissions require explicit, voluntary user opt-in consent with transparent diagnostics toggles.
+- **Official Legal Center**: [https://policies.pixelabs.in/](https://policies.pixelabs.in/)
+- **Google Play Direct Policy URL**: [https://policies.pixelabs.in/privacy.html](https://policies.pixelabs.in/privacy.html)
+- **Terms & Conditions**: [https://policies.pixelabs.in/terms.html](https://policies.pixelabs.in/terms.html)
 
 ---
 
