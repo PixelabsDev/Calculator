@@ -1874,120 +1874,89 @@ fun LandscapeCalculatorLayout(
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Left Pane: Calculation Display Canvas
+        // Left Pane: Calculation Display Panel (Allocated Left Half)
         Column(
             modifier = Modifier
-                .weight(0.36f)
+                .weight(0.42f)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(16.dp))
                 .background(displayBgColor)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.End
         ) {
-            // Mode Indicator Badge (Clickable to toggle Rad / Deg)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
+            // Input Expression Typography with Horizontal Auto-Scroll
+            val landInputScrollState = rememberScrollState()
+            LaunchedEffect(input) {
+                if (input.isNotEmpty()) {
+                    landInputScrollState.animateScrollTo(landInputScrollState.maxValue)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(landInputScrollState),
+                contentAlignment = Alignment.CenterEnd
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isRadMode) (if (isDark) Color(0xFF383048) else Color(0xFFE8DEF8)) else (if (isDark) Color(0xFF221E2C) else Color(0xFFF3EDF7)))
-                        .clickable {
-                            vibrate(false)
-                            viewModel.toggleRadMode()
-                        }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (isRadMode) "RAD" else "DEG",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4)
-                        )
-                    )
+                Text(
+                    text = if (input.isEmpty()) "0" else input,
+                    style = TextStyleForInput(input),
+                    color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.testTag("calculation_input"),
+                    fontFamily = FontFamily.SansSerif
+                )
+            }
+
+            // Output Evaluation Result Typography with Fluid Fade & Slide
+            val landPreviewScrollState = rememberScrollState()
+            LaunchedEffect(result) {
+                if (result.isNotEmpty()) {
+                    landPreviewScrollState.animateScrollTo(landPreviewScrollState.maxValue)
                 }
             }
 
-            // Input Expression and Output Evaluation Result
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                val landInputScrollState = rememberScrollState()
-                LaunchedEffect(input) {
-                    if (input.isNotEmpty()) {
-                        landInputScrollState.animateScrollTo(landInputScrollState.maxValue)
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(landInputScrollState),
-                    contentAlignment = Alignment.BottomEnd
-                ) {
-                    Text(
-                        text = if (input.isEmpty()) "0" else input,
-                        style = TextStyleForInput(input),
-                        color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
-                        textAlign = TextAlign.End,
-                        maxLines = 1,
-                        softWrap = false,
+            AnimatedContent(
+                targetState = result,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                        slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
+                        .togetherWith(
+                            fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
+                        )
+                },
+                label = "landCalculationPreviewAnim"
+            ) { previewText ->
+                if (previewText.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
                         modifier = Modifier
-                            .testTag("calculation_input"),
-                        fontFamily = FontFamily.SansSerif
-                    )
-                }
-
-                val landPreviewScrollState = rememberScrollState()
-                LaunchedEffect(result) {
-                    if (result.isNotEmpty()) {
-                        landPreviewScrollState.animateScrollTo(landPreviewScrollState.maxValue)
-                    }
-                }
-
-                AnimatedContent(
-                    targetState = result,
-                    transitionSpec = {
-                        (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                            slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
-                            .togetherWith(
-                                fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
-                            )
-                    },
-                    label = "landCalculationPreviewAnim"
-                ) { previewText ->
-                    if (previewText.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(landPreviewScrollState),
-                            contentAlignment = Alignment.BottomEnd
-                        ) {
-                            Text(
-                                text = previewText,
-                                style = TextStyleForOutput(previewText),
-                                color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
-                                textAlign = TextAlign.End,
-                                maxLines = 1,
-                                softWrap = false,
-                                modifier = Modifier
-                                    .testTag("calculation_preview"),
-                                fontFamily = FontFamily.SansSerif
-                            )
-                        }
+                            .fillMaxWidth()
+                            .horizontalScroll(landPreviewScrollState),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Text(
+                            text = previewText,
+                            style = TextStyleForOutput(previewText),
+                            color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.testTag("calculation_preview"),
+                            fontFamily = FontFamily.SansSerif
+                        )
                     }
                 }
             }
         }
 
-        // Right Pane: Scientific & Numeric Keypad (5 equal rows x 7 columns)
+        // Right Pane: Scientific & Numeric Keypad (5 rows x 7 column grid)
         CompositionLocalProvider(LocalButtonAspectRatio provides 0f) {
             Column(
                 modifier = Modifier
-                    .weight(0.64f)
+                    .weight(0.58f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(16.dp))
                     .background(keypadBgColor)
@@ -1995,10 +1964,10 @@ fun LandscapeCalculatorLayout(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 val btnShape = RoundedCornerShape(10.dp)
-                val sciFontSize = 15.sp
+                val sciFontSize = 14.sp
                 val numFontSize = 17.sp
 
-                // Row 1: [Rad/Deg] [√] [π] [AC] [( )] [%] [÷]
+                // Row 1: [DEG/RAD Toggle] [√] [π] [AC (weight 2f)] [%] [÷]
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -2006,7 +1975,7 @@ fun LandscapeCalculatorLayout(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     KeypadButton(
-                        label = if (isRadMode) "Rad" else "Deg",
+                        label = if (isRadMode) "RAD" else "DEG",
                         bgColor = if (isRadMode) activeSciBg else scientificBtnBg,
                         txtColor = if (isRadMode) activeSciTxt else scientificBtnTxt,
                         modifier = Modifier.weight(1f),
@@ -2017,8 +1986,7 @@ fun LandscapeCalculatorLayout(
 
                     KeypadButton("√", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("√") }
                     KeypadButton("π", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("π") }
-                    KeypadButton("AC", alertBg, alertTxt, Modifier.weight(1f), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("AC") }
-                    KeypadButton("( )", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("( )") }
+                    KeypadButton("AC", alertBg, alertTxt, Modifier.weight(2f), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("AC") }
                     KeypadButton("%", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("%") }
                     KeypadButton("÷", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("÷") }
                 }
@@ -2080,15 +2048,15 @@ fun LandscapeCalculatorLayout(
                     KeypadButton("+", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("+") }
                 }
 
-                // Row 5: [(] [)] [0] [.] [⌫] [= (weight 2f)]
+                // Row 5: [( (1.5f)] [) (1.5f)] [0 (1f)] [. (1f)] [⌫ (1f)] [= (1f)]
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    KeypadButton("(", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("(") }
-                    KeypadButton(")", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress(")") }
+                    KeypadButton("(", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("(") }
+                    KeypadButton(")", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress(")") }
                     KeypadButton("0", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("0") }
                     KeypadButton(".", numberBtnBg, numberBtnTxt, Modifier.weight(1f), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress(".") }
 
@@ -2123,12 +2091,12 @@ fun LandscapeCalculatorLayout(
                         BackspaceIcon(color = operatorBtnTxt)
                     }
 
-                    // Equals button (weight 2f for clear hit target)
+                    // Equals button (aligned in numeric operator column under +)
                     KeypadButton(
                         label = "=",
                         bgColor = equalsBtnBg,
                         txtColor = equalsBtnTxt,
-                        modifier = Modifier.weight(2f),
+                        modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold,
                         shape = btnShape,
                         fontSize = 20.sp
