@@ -10,6 +10,7 @@ import com.example.data.HistoryRepository
 import com.example.integrity.DeviceIntegrityChecker
 import com.example.integrity.DeviceSecurityReport
 import com.example.report.ReportManager
+import com.example.report.ReportSubmitState
 import com.example.report.UserReport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,6 +49,39 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     val reportManager = ReportManager(application)
+
+    private val _reportSubmitState = MutableStateFlow<ReportSubmitState>(ReportSubmitState.Idle)
+    val reportSubmitState: StateFlow<ReportSubmitState> = _reportSubmitState.asStateFlow()
+
+    fun submitReportToSheet(
+        category: String,
+        title: String,
+        description: String,
+        email: String,
+        includeDiagnostics: Boolean
+    ) {
+        viewModelScope.launch {
+            _reportSubmitState.value = ReportSubmitState.Submitting
+            val report = UserReport(
+                category = category,
+                title = title,
+                description = description,
+                email = email,
+                includeDiagnostics = includeDiagnostics,
+                isRadMode = _isRadMode.value
+            )
+            val result = reportManager.submitReportToSheet(report)
+            _reportSubmitState.value = if (result.isSuccess) {
+                ReportSubmitState.Success("Report submitted directly to Google Sheet! Thank you.")
+            } else {
+                ReportSubmitState.Error(result.exceptionOrNull()?.localizedMessage ?: "Failed to submit. Please check your internet connection or use Email.")
+            }
+        }
+    }
+
+    fun resetReportSubmitState() {
+        _reportSubmitState.value = ReportSubmitState.Idle
+    }
 
     fun createEmailIntent(category: String, title: String, description: String, email: String, includeDiagnostics: Boolean): android.content.Intent {
         val report = UserReport(

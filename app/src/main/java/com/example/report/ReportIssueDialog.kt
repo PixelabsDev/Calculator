@@ -3,7 +3,6 @@ package com.example.report
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -31,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.calculator.CalculatorViewModel
@@ -62,6 +63,7 @@ fun ReportIssueDialog(
     isDark: Boolean
 ) {
     val context = LocalContext.current
+    val submitState by viewModel.reportSubmitState.collectAsState()
 
     val categories = listOf("🐛 Bug Report", "🧮 Calculation", "💡 Suggestion", "💬 Feedback")
     var selectedCategory by remember { mutableStateOf(categories[0]) }
@@ -80,7 +82,10 @@ fun ReportIssueDialog(
     val chipUnselectedBg = if (isDark) Color(0xFF2B2636) else Color(0xFFF3EDF7)
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            viewModel.resetReportSubmitState()
+            onDismiss()
+        },
         modifier = Modifier.testTag("dialog_report_issue"),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -91,7 +96,7 @@ fun ReportIssueDialog(
                         .background(accentColor.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "✉️", fontSize = 20.sp)
+                    Text(text = "📊", fontSize = 20.sp)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -100,253 +105,360 @@ fun ReportIssueDialog(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        text = "Your feedback helps improve Calculator",
+                        text = "Direct Google Sheet • Optional Email",
                         style = MaterialTheme.typography.labelSmall.copy(color = subtextColor)
                     )
                 }
             }
         },
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Category Selector (2x2 grid to prevent text truncation/wrapping)
-                Text(
-                    text = "Feedback Type",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, color = textColor)
-                )
-
+            if (submitState is ReportSubmitState.Success) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Row 1: Bug Report & Calculation
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(if (isDark) Color(0xFF1E3A24) else Color(0xFFE8F5E9)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        for (i in 0..1) {
-                            val cat = categories[i]
-                            val isSelected = selectedCategory == cat
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSelected) chipSelectedBg else chipUnselectedBg)
-                                    .border(
-                                        width = if (isSelected) 1.5.dp else 0.5.dp,
-                                        color = if (isSelected) accentColor else inputBorder.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable { selectedCategory = cat }
-                                    .padding(vertical = 10.dp, horizontal = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = cat,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) (if (isDark) Color(0xFFF3EDFF) else Color(0xFF381E72)) else textColor,
-                                        fontSize = 12.sp
-                                    ),
-                                    maxLines = 1
-                                )
-                            }
-                        }
+                        Text(text = "✅", fontSize = 28.sp)
                     }
-
-                    // Row 2: Suggestion & Feedback
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        for (i in 2..3) {
-                            val cat = categories[i]
-                            val isSelected = selectedCategory == cat
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSelected) chipSelectedBg else chipUnselectedBg)
-                                    .border(
-                                        width = if (isSelected) 1.5.dp else 0.5.dp,
-                                        color = if (isSelected) accentColor else inputBorder.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable { selectedCategory = cat }
-                                    .padding(vertical = 10.dp, horizontal = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = cat,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) (if (isDark) Color(0xFFF3EDFF) else Color(0xFF381E72)) else textColor,
-                                        fontSize = 12.sp
-                                    ),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Title Input
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Subject / Summary") },
-                    placeholder = { Text("e.g. Percentage calculation formula") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("report_title_input"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = accentColor,
-                        unfocusedBorderColor = inputBorder
-                    )
-                )
-
-                // Description Input
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Details & Description") },
-                    placeholder = { Text("Describe the issue, formula, or suggestion...") },
-                    minLines = 3,
-                    maxLines = 5,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("report_desc_input"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = accentColor,
-                        unfocusedBorderColor = inputBorder
-                    )
-                )
-
-                // Optional User Email Input (Never pre-filled with dummy data)
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Your Email (optional, for follow-up)") },
-                    placeholder = { Text("you@example.com") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = accentColor,
-                        unfocusedBorderColor = inputBorder
-                    )
-                )
-
-                // Privacy & Consent Checkbox for Diagnostics
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { includeDiagnostics = !includeDiagnostics }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = includeDiagnostics,
-                        onCheckedChange = { includeDiagnostics = it },
-                        colors = CheckboxDefaults.colors(checkedColor = accentColor)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Include system diagnostics (Android version & device model) to help debug",
-                        style = MaterialTheme.typography.bodySmall.copy(color = textColor, fontSize = 11.5.sp)
+                        text = "Feedback Recorded!",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
+                        )
+                    )
+                    Text(
+                        text = (submitState as ReportSubmitState.Success).message,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = textColor,
+                            lineHeight = 20.sp
+                        ),
+                        textAlign = TextAlign.Center
                     )
                 }
-
-                // Diagnostics Preview Card (Visible only when consent is granted)
-                AnimatedVisibility(visible = includeDiagnostics) {
-                    Card(
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = cardBg),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Error alert if submission failed
+                    if (submitState is ReportSubmitState.Error) {
+                        Card(
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF3E2723) else Color(0xFFFFEBEE)),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "Diagnostics to be attached:",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = accentColor)
-                            )
-                            Text(
-                                text = "• App Version: 19.0\n• OS: Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n• Device: ${Build.MANUFACTURER} ${Build.MODEL}\n• Angle Mode: ${if (viewModel.isRadMode.collectAsState().value) "RAD" else "DEG"}",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    color = subtextColor,
-                                    fontSize = 10.sp,
-                                    lineHeight = 15.sp
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("⚠️", fontSize = 18.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = (submitState as ReportSubmitState.Error).error,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = if (isDark) Color(0xFFFFCCBC) else Color(0xFFC62828),
+                                        fontSize = 11.5.sp
+                                    )
                                 )
-                            )
+                            }
+                        }
+                    }
+
+                    // Category Selector (2x2 grid to prevent text truncation/wrapping)
+                    Text(
+                        text = "Feedback Type",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, color = textColor)
+                    )
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Row 1: Bug Report & Calculation
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            for (i in 0..1) {
+                                val cat = categories[i]
+                                val isSelected = selectedCategory == cat
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) chipSelectedBg else chipUnselectedBg)
+                                        .border(
+                                            width = if (isSelected) 1.5.dp else 0.5.dp,
+                                            color = if (isSelected) accentColor else inputBorder.copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable { selectedCategory = cat }
+                                        .padding(vertical = 10.dp, horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = cat,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) (if (isDark) Color(0xFFF3EDFF) else Color(0xFF381E72)) else textColor,
+                                            fontSize = 12.sp
+                                        ),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        // Row 2: Suggestion & Feedback
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            for (i in 2..3) {
+                                val cat = categories[i]
+                                val isSelected = selectedCategory == cat
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) chipSelectedBg else chipUnselectedBg)
+                                        .border(
+                                            width = if (isSelected) 1.5.dp else 0.5.dp,
+                                            color = if (isSelected) accentColor else inputBorder.copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable { selectedCategory = cat }
+                                        .padding(vertical = 10.dp, horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = cat,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) (if (isDark) Color(0xFFF3EDFF) else Color(0xFF381E72)) else textColor,
+                                            fontSize = 12.sp
+                                        ),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Title Input
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Subject / Summary") },
+                        placeholder = { Text("e.g. Percentage calculation formula") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("report_title_input"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = inputBorder
+                        )
+                    )
+
+                    // Description Input
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Details & Description") },
+                        placeholder = { Text("Describe the issue, formula, or suggestion...") },
+                        minLines = 3,
+                        maxLines = 5,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("report_desc_input"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = inputBorder
+                        )
+                    )
+
+                    // Optional User Email Input (Never pre-filled with dummy data)
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Your Email (optional, for follow-up)") },
+                        placeholder = { Text("you@example.com") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = inputBorder
+                        )
+                    )
+
+                    // Privacy & Consent Checkbox for Diagnostics
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { includeDiagnostics = !includeDiagnostics }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = includeDiagnostics,
+                            onCheckedChange = { includeDiagnostics = it },
+                            colors = CheckboxDefaults.colors(checkedColor = accentColor)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Include system diagnostics (Android version & device model) to help debug",
+                            style = MaterialTheme.typography.bodySmall.copy(color = textColor, fontSize = 11.5.sp)
+                        )
+                    }
+
+                    // Diagnostics Preview Card (Visible only when consent is granted)
+                    AnimatedVisibility(visible = includeDiagnostics) {
+                        Card(
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = cardBg),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Text(
+                                    text = "Diagnostics to be attached:",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = accentColor)
+                                )
+                                Text(
+                                    text = "• App Version: 19.0\n• OS: Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n• Device: ${Build.MANUFACTURER} ${Build.MODEL}\n• Angle Mode: ${if (viewModel.isRadMode.collectAsState().value) "RAD" else "DEG"}",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        color = subtextColor,
+                                        fontSize = 10.sp,
+                                        lineHeight = 15.sp
+                                    )
+                                )
+                            }
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    if (description.isBlank()) {
-                        Toast.makeText(context, "Please enter some details first", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val intent = viewModel.createEmailIntent(
-                            category = selectedCategory,
-                            title = title.ifBlank { "User Feedback" },
-                            description = description,
-                            email = email,
-                            includeDiagnostics = includeDiagnostics
-                        )
-                        try {
-                            context.startActivity(intent)
-                            onDismiss()
-                        } catch (_: Exception) {
-                            Toast.makeText(context, "No email client found. Use 'Copy' instead.", Toast.LENGTH_LONG).show()
+            if (submitState is ReportSubmitState.Success) {
+                Button(
+                    onClick = {
+                        viewModel.resetReportSubmitState()
+                        onDismiss()
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accentColor,
+                        contentColor = if (isDark) Color(0xFF381E72) else Color.White
+                    )
+                ) {
+                    Text("Done", fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Button(
+                    onClick = {
+                        if (description.isBlank()) {
+                            Toast.makeText(context, "Please enter some details first", Toast.LENGTH_SHORT).show()
+                        } else {
+                            viewModel.submitReportToSheet(
+                                category = selectedCategory,
+                                title = title.ifBlank { "User Feedback" },
+                                description = description,
+                                email = email,
+                                includeDiagnostics = includeDiagnostics
+                            )
                         }
+                    },
+                    enabled = submitState !is ReportSubmitState.Submitting,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accentColor,
+                        contentColor = if (isDark) Color(0xFF381E72) else Color.White
+                    ),
+                    modifier = Modifier.testTag("submit_report_button")
+                ) {
+                    if (submitState is ReportSubmitState.Submitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = if (isDark) Color(0xFF381E72) else Color.White
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Submitting...", fontWeight = FontWeight.Bold)
+                    } else {
+                        Text("🚀 Submit to Sheet", fontWeight = FontWeight.Bold)
                     }
-                },
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = accentColor,
-                    contentColor = if (isDark) Color(0xFF381E72) else Color.White
-                ),
-                modifier = Modifier.testTag("submit_report_button")
-            ) {
-                Text("✉️ Send via Email", fontWeight = FontWeight.Bold)
+                }
             }
         },
         dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        val text = viewModel.getFormattedReportText(
-                            category = selectedCategory,
-                            title = title.ifBlank { "User Feedback" },
-                            description = description.ifBlank { "(No details entered)" },
-                            email = email,
-                            includeDiagnostics = includeDiagnostics
-                        )
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Calculator Feedback", text))
-                        Toast.makeText(context, "Feedback details copied to clipboard!", Toast.LENGTH_SHORT).show()
-                    },
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("📋 Copy")
-                }
+            if (submitState !is ReportSubmitState.Success) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            val intent = viewModel.createEmailIntent(
+                                category = selectedCategory,
+                                title = title.ifBlank { "User Feedback" },
+                                description = description,
+                                email = email,
+                                includeDiagnostics = includeDiagnostics
+                            )
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "No email client found. Use 'Copy' instead.", Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("✉️ Email")
+                    }
 
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel", color = subtextColor)
+                    OutlinedButton(
+                        onClick = {
+                            val text = viewModel.getFormattedReportText(
+                                category = selectedCategory,
+                                title = title.ifBlank { "User Feedback" },
+                                description = description.ifBlank { "(No details entered)" },
+                                email = email,
+                                includeDiagnostics = includeDiagnostics
+                            )
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Calculator Feedback", text))
+                            Toast.makeText(context, "Feedback details copied!", Toast.LENGTH_SHORT).show()
+                        },
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("📋 Copy")
+                    }
+
+                    TextButton(
+                        onClick = {
+                            viewModel.resetReportSubmitState()
+                            onDismiss()
+                        }
+                    ) {
+                        Text("Cancel", color = subtextColor)
+                    }
                 }
             }
         }

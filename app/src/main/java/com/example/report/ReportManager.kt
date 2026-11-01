@@ -4,9 +4,21 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+sealed interface ReportSubmitState {
+    object Idle : ReportSubmitState
+    object Submitting : ReportSubmitState
+    data class Success(val message: String) : ReportSubmitState
+    data class Error(val error: String) : ReportSubmitState
+}
 
 data class UserReport(
     val category: String,
@@ -25,6 +37,73 @@ class ReportManager(private val context: Context) {
 
     companion object {
         const val DEVELOPER_EMAIL = "hello@pixelabs.in"
+        const val WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwe1eIw5cNmY2zoa1LMmO3D5bElhnfVE6MpbDk1wc6iePfiQ4Mh_YeNQYAye2TNsune/exec"
+    }
+
+    suspend fun submitReportToSheet(report: UserReport): Result<Unit> = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
+        try {
+            val jsonPayload = JSONObject().apply {
+                put("timestamp", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(report.timestamp)))
+                put("category", report.category)
+                put("title", report.title.ifBlank { "User Feedback" })
+                put("description", report.description)
+                put("email", report.email)
+                put("deviceModel", if (report.includeDiagnostics) report.deviceModel else "N/A (Omitted by user)")
+                put("androidVersion", if (report.includeDiagnostics) report.androidVersion else "N/A (Omitted by user)")
+                put("appVersion", report.appVersion)
+                put("angleMode", if (report.includeDiagnostics) (if (report.isRadMode) "RAD" else "DEG") else "N/A")
+            }.toString()
+
+            val url = URL(WEBHOOK_URL)
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                instanceFollowRedirects = false
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                setRequestProperty("Accept", "application/json")
+            }
+
+            connection.outputStream.use { os ->
+                os.write(jsonPayload.toByteArray(Charsets.UTF_8))
+                os.flush()
+            }
+
+            var responseCode = connection.responseCode
+            // Follow 302/301/303/307 redirect from Google Apps Script Web App
+            if (responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
+                responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
+                responseCode == HttpURLConnection.HTTP_SEE_OTHER ||
+                responseCode == 307
+            ) {
+                val redirectLocation = connection.getHeaderField("Location")
+                connection.disconnect()
+
+                if (!redirectLocation.isNullOrEmpty()) {
+                    connection = (URL(redirectLocation).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = 15000
+                        readTimeout = 15000
+                    }
+                    responseCode = connection.responseCode
+                }
+            }
+
+            val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
+            if (responseCode in 200..299 && responseBody.contains("\"status\":\"success\"")) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Submission response unexpected ($responseCode): $responseBody"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            try {
+                connection?.disconnect()
+            } catch (_: Exception) {}
+        }
     }
 
     fun createEmailIntent(report: UserReport): Intent {
