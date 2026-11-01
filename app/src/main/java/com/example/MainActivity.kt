@@ -249,7 +249,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 8.dp, vertical = if (isPortrait) 4.dp else 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1633,13 +1633,32 @@ private fun TextStyleForInput(input: String) = when {
     else -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
 }
 
-// Adjusts live output result size as well to make everything beautifully fit
+// Dynamically adjusts live output result size as well to make everything beautifully fit
 @Composable
 private fun TextStyleForOutput(result: String) = when {
     result.length < 10 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Medium)
     result.length < 16 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
     result.length < 24 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
     else -> MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+}
+
+// Dynamically adjusts landscape input text size to guarantee no clipping or overlap
+@Composable
+private fun LandscapeTextStyleForInput(input: String) = when {
+    input.length < 8 -> MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold)
+    input.length < 14 -> MaterialTheme.typography.headlineMedium.copy(fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.SemiBold)
+    input.length < 22 -> MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Normal)
+    input.length < 32 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Normal)
+    else -> MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Normal)
+}
+
+// Dynamically adjusts landscape output preview size
+@Composable
+private fun LandscapeTextStyleForOutput(result: String) = when {
+    result.length < 10 -> MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
+    result.length < 16 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium)
+    result.length < 24 -> MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
+    else -> MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium)
 }
 
 @Composable
@@ -1883,20 +1902,20 @@ fun LandscapeCalculatorLayout(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Top ~26% Screen Height: Dedicated Slim Horizontal Display Panel
+        // Top ~34% Screen Height: Dedicated Slim Horizontal Display Panel with guaranteed headroom
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.26f),
+                .weight(0.34f),
             shape = RoundedCornerShape(16.dp),
             color = displayBgColor
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -1958,7 +1977,8 @@ fun LandscapeCalculatorLayout(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight(),
+                        .fillMaxHeight()
+                        .padding(end = 4.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.End
                 ) {
@@ -1976,7 +1996,7 @@ fun LandscapeCalculatorLayout(
                     ) {
                         Text(
                             text = if (input.isEmpty()) "0" else input,
-                            style = TextStyleForInput(input),
+                            style = LandscapeTextStyleForInput(input),
                             color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
                             textAlign = TextAlign.End,
                             maxLines = 1,
@@ -2014,7 +2034,7 @@ fun LandscapeCalculatorLayout(
                             ) {
                                 Text(
                                     text = previewText,
-                                    style = TextStyleForOutput(previewText),
+                                    style = LandscapeTextStyleForOutput(previewText),
                                     color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
                                     textAlign = TextAlign.End,
                                     maxLines = 1,
@@ -2029,11 +2049,11 @@ fun LandscapeCalculatorLayout(
             }
         }
 
-        // Bottom ~74% Screen Height: Keypad Container (3 + 4 Architecture with Oval Keys)
+        // Bottom ~66% Screen Height: Keypad Container (3 + 4 Architecture with Oval Keys)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.74f),
+                .weight(0.66f),
             shape = RoundedCornerShape(16.dp),
             color = keypadBgColor
         ) {
@@ -2045,7 +2065,7 @@ fun LandscapeCalculatorLayout(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     val btnShape = CircleShape
-                    val btnHeight = 40.dp
+                    val btnHeight = 38.dp
                     val sciFontSize = 13.sp
                     val numFontSize = 16.sp
 
