@@ -20,3 +20,5 @@ debug.keystore
 *.keystore
 upload-keystore.jks
 my-upload-key.jks
+__pycache__/
+*.pyc

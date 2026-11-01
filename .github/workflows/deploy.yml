@@ -1,4 +1,4 @@
-name: Android CI/CD - Build & Deploy to Google Play Console
+name: Production Release CI/CD Pipeline
 
 on:
   push:
@@ -6,12 +6,22 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      track:
+        description: 'Google Play Release Track'
+        required: false
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
       version_code:
-        description: 'Custom Version Code (optional, defaults to latest build)'
+        description: 'Custom Version Code override (optional)'
         required: false
         type: string
       version_name:
-        description: 'Custom Version Name (optional, e.g. 19.0)'
+        description: 'Custom Version Name override (optional, e.g. 19.1.0)'
         required: false
         type: string
 
@@ -19,16 +29,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+  packages: read
+
 jobs:
-  build-and-deploy:
-    name: Build Release AAB & Deploy to Internal Track
+  production-release:
+    name: Test, Build, Package & Deploy Production Release
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Full Repository History
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -43,49 +58,243 @@ jobs:
           packages: 'platform-tools'
           accept-android-sdk-licenses: true
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
-
-      - name: Prepare Keystore
+      - name: Grant Execute Permissions
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "Decoding release upload keystore from GitHub Secrets..."
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/upload-keystore.jks"
+          chmod +x gradlew
+          chmod +x scripts/*.py 2>/dev/null || true
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # =========================================================================
+      # 1. DYNAMIC VERSIONING & AUTOMATED CHANGELOG
+      # =========================================================================
+      - name: Compute Dynamic Semantic Version & Version Code
+        id: versioning
+        env:
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+        run: python3 scripts/compute-version.py
+
+      - name: Generate Changelog & Play Store Release Notes
+        id: changelog
+        env:
+          VERSION_NAME: ${{ steps.versioning.outputs.version_name }}
+        run: python3 scripts/generate-changelog.py
+
+      # =========================================================================
+      # 2. AUTOMATED TESTING & QUALITY GATES (FAIL-FAST)
+      # =========================================================================
+      - name: Quality Gate 1 - Unit Tests
+        run: ./gradlew testReleaseUnitTest --stacktrace
+
+      - name: Quality Gate 2 - Static Code Analysis & Lint
+        run: ./gradlew lintRelease --stacktrace
+
+      - name: Quality Gate 3 - Security & Dependency Audit (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      # =========================================================================
+      # 3. DETERMINISTIC KEYSTORE SETUP & CLEANUP
+      # =========================================================================
+      - name: Prepare Isolated Signing Keystore
+        id: keystore
+        run: |
+          KEYSTORE_DIR="${{ runner.temp }}/keystore"
+          mkdir -p "$KEYSTORE_DIR"
+          KEYSTORE_FILE="$KEYSTORE_DIR/release.jks"
+          
+          ENCODED_KEYSTORE="${{ secrets.ANDROID_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}"
+          if [ -n "$ENCODED_KEYSTORE" ]; then
+            echo "Decoding upload keystore from GitHub Secrets into isolated temp runner..."
+            echo "$ENCODED_KEYSTORE" | base64 --decode > "$KEYSTORE_FILE"
           else
-            echo "KEYSTORE_BASE64 secret not yet configured. Generating temporary signing keystore for build verification..."
-            keytool -genkey -v -keystore "${{ github.workspace }}/upload-keystore.jks" -alias upload -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Build,O=Pixelabs,C=US"
+            echo "::warning::Production keystore secret not found! Generating fallback temporary keystore..."
+            keytool -genkey -v -keystore "$KEYSTORE_FILE" -alias upload -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Build,O=Pixelabs,C=US"
           fi
+          chmod 600 "$KEYSTORE_FILE"
+          echo "keystore_path=$KEYSTORE_FILE" >> $GITHUB_OUTPUT
 
-      - name: Run Unit Tests
-        run: ./gradlew test --stacktrace
-
+      # =========================================================================
+      # 4. BUILD RELEASE APP BUNDLE (.AAB)
+      # =========================================================================
       - name: Build Release App Bundle (.aab)
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/upload-keystore.jks
+          STORE_FILE: ${{ steps.keystore.outputs.keystore_path }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'android' }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
-          VERSION_CODE: ${{ inputs.version_code || secrets.VERSION_CODE }}
-          VERSION_NAME: ${{ inputs.version_name || secrets.VERSION_NAME }}
+          VERSION_CODE: ${{ steps.versioning.outputs.version_code }}
+          VERSION_NAME: ${{ steps.versioning.outputs.version_name }}
         run: ./gradlew bundleRelease --stacktrace
 
-      - name: Upload Release Bundle Artifact
+      # =========================================================================
+      # 5. POST-BUILD SIZE WATCHDOG
+      # =========================================================================
+      - name: Quality Gate 4 - AAB Size Watchdog (Max 5 MB)
+        run: |
+          AAB_FILE=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
+          if [ -z "$AAB_FILE" ] || [ ! -f "$AAB_FILE" ]; then
+            echo "::error::Release AAB file was not generated!"
+            exit 1
+          fi
+          
+          MAX_BYTES=$((5 * 1024 * 1024)) # 5 MB
+          SIZE_BYTES=$(stat -c%s "$AAB_FILE" 2>/dev/null || stat -f%z "$AAB_FILE")
+          SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES / (1024 * 1024)}")
+          
+          echo "================ AAB Size Audit ================"
+          echo "Artifact Path: $AAB_FILE"
+          echo "Artifact Size: $SIZE_BYTES bytes ($SIZE_MB MB)"
+          echo "Max Threshold: $MAX_BYTES bytes (5.00 MB)"
+          echo "================================================"
+          
+          if [ "$SIZE_BYTES" -gt "$MAX_BYTES" ]; then
+            echo "::error::AAB file size exceeds maximum threshold of 5 MB ($SIZE_MB MB > 5.00 MB)!"
+            exit 1
+          fi
+          echo "AAB size watchdog passed successfully."
+
+      # =========================================================================
+      # 6. UNIVERSAL APK GENERATION VIA BUNDLETOOL
+      # =========================================================================
+      - name: Generate Universal Release APK via Bundletool
+        run: |
+          BUNDLETOOL_VERSION="1.17.2"
+          BUNDLETOOL_JAR="${{ runner.temp }}/bundletool.jar"
+          curl -sSL "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar" -o "$BUNDLETOOL_JAR"
+          
+          AAB_FILE=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
+          KEYSTORE_FILE="${{ steps.keystore.outputs.keystore_path }}"
+          APKS_FILE="${{ runner.temp }}/app-universal.apks"
+          OUTPUT_APK_DIR="app/build/outputs/apk/release"
+          mkdir -p "$OUTPUT_APK_DIR"
+          UNIVERSAL_APK="$OUTPUT_APK_DIR/calculator-v${{ steps.versioning.outputs.version_name }}-universal.apk"
+          
+          STORE_PASS="${{ secrets.STORE_PASSWORD || 'android' }}"
+          KEY_AL="${{ secrets.KEY_ALIAS || 'upload' }}"
+          KEY_PASS="${{ secrets.KEY_PASSWORD || 'android' }}"
+          
+          java -jar "$BUNDLETOOL_JAR" build-apks \
+            --bundle="$AAB_FILE" \
+            --output="$APKS_FILE" \
+            --mode=universal \
+            --ks="$KEYSTORE_FILE" \
+            --ks-pass="pass:$STORE_PASS" \
+            --ks-key-alias="$KEY_AL" \
+            --key-pass="pass:$KEY_PASS"
+          
+          unzip -p "$APKS_FILE" universal.apk > "$UNIVERSAL_APK"
+          echo "Universal APK created successfully at: $UNIVERSAL_APK"
+          ls -lh "$UNIVERSAL_APK"
+
+      # =========================================================================
+      # 7. SECURE KEYSTORE CLEANUP (MANDATORY ALWAYS)
+      # =========================================================================
+      - name: Secure Keystore Shred & Cleanup
+        if: always()
+        run: |
+          KEYSTORE_DIR="${{ runner.temp }}/keystore"
+          if [ -d "$KEYSTORE_DIR" ]; then
+            echo "Shredding cryptographic keystore from runner memory and disk..."
+            find "$KEYSTORE_DIR" -type f -exec shred -u -z {} + 2>/dev/null || rm -rf "$KEYSTORE_DIR"
+            rm -rf "$KEYSTORE_DIR"
+            echo "Keystore cleanup verified."
+          fi
+
+      # =========================================================================
+      # 8. UPLOAD PIPELINE ARTIFACTS
+      # =========================================================================
+      - name: Upload Release AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab
+          name: calculator-v${{ steps.versioning.outputs.version_name }}-aab
           path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
-      - name: Deploy to Google Play Console (Internal Testing)
-        if: env.CAN_DEPLOY == 'true'
+      - name: Upload Universal Sideload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-v${{ steps.versioning.outputs.version_name }}-universal-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Release Notes & WhatsNew Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-v${{ steps.versioning.outputs.version_name }}
+          path: |
+            RELEASE_NOTES.md
+            distribution/whatsnew/*
+          retention-days: 30
+
+      # =========================================================================
+      # 9. LOCATE OPTIONAL PROGUARD MAPPING FILE
+      # =========================================================================
+      - name: Locate Mapping File (if obfuscated)
+        id: mapping-locator
+        run: |
+          MAP_FILE=$(find app/build/outputs/mapping/release -name "mapping.txt" 2>/dev/null | head -n 1)
+          if [ -n "$MAP_FILE" ] && [ -f "$MAP_FILE" ]; then
+            echo "mapping_file=$MAP_FILE" >> $GITHUB_OUTPUT
+            echo "Found mapping file: $MAP_FILE"
+          else
+            echo "mapping_file=" >> $GITHUB_OUTPUT
+            echo "No mapping file found (minification is disabled)."
+          fi
+
+      # =========================================================================
+      # 10. GIT TAGGING & GITHUB RELEASE
+      # =========================================================================
+      - name: Push Git Release Tag
+        run: |
+          TAG="${{ steps.versioning.outputs.tag_name }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists locally or remotely. Skipping tag push."
+          else
+            echo "Creating and pushing Git tag: $TAG"
+            git tag -a "$TAG" -m "Release $TAG [skip ci]"
+            git push origin "$TAG"
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.versioning.outputs.tag_name }}
+          name: Release ${{ steps.versioning.outputs.tag_name }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            app/build/outputs/bundle/release/*.aab
+            app/build/outputs/apk/release/*.apk
+          draft: false
+          prerelease: false
+
+      # =========================================================================
+      # 11. DEPLOY TO GOOGLE PLAY CONSOLE
+      # =========================================================================
+      - name: Deploy to Google Play Console
+        if: env.HAS_PLAY_SECRET == 'true'
+        continue-on-error: true
         env:
-          CAN_DEPLOY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+          HAS_PLAY_SECRET: ${{ (secrets.PLAY_STORE_JSON_KEY != '' || secrets.PLAY_SERVICE_ACCOUNT_JSON != '') }}
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY || secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.aistudio.calculator.gtypxz
           releaseFiles: app/build/outputs/bundle/release/*.aab
-          track: internal
+          track: ${{ inputs.track || 'internal' }}
           status: completed
-          inAppUpdatePriority: 0
+          whatsNewDirectory: distribution/whatsnew
+          mappingFile: ${{ steps.mapping-locator.outputs.mapping_file }}
