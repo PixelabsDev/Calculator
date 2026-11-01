@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terms of Service | PyPad by Pixelabs</title>
-  <meta name="description" content="Terms of Service governing PyPad by Pixelabs.">
+  <title>Terms of Service | PyPad</title>
+  <meta name="description" content="Terms of Service for PyPad (Mobile Py IDE) by Pixelabs. Code ownership, sandbox policies, and acceptable use.">
   <link rel="stylesheet" href="../assets/css/legal.css">
   <script src="../assets/js/theme.js"></script>
 </head>
@@ -41,28 +41,47 @@
 
     <h1>Terms of Service for PyPad</h1>
     <div class="doc-meta">
-      Last Updated: November 1, 2026 &nbsp;|&nbsp; Application: PyPad &nbsp;|&nbsp; Publisher: Pixelabs Digital Services
+      Last Updated: November 1, 2026 &nbsp;|&nbsp; Service: PyPad (Mobile Py IDE) &nbsp;|&nbsp; Publisher: Pixelabs Digital Services
     </div>
 
-    <h2>1. Acceptance of Terms</h2>
-    <p>By downloading, installing, or using PyPad ("the Application"), you agree to these Terms of Service. If you do not accept these terms, do not use the Application.</p>
+    <h2>1. Agreement to Terms</h2>
+    <p>By accessing, deploying, or using PyPad (Mobile Py IDE) ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not access or use the Service.</p>
 
-    <h2>2. Code Ownership</h2>
+    <h2>2. User Intellectual Property & Code Ownership</h2>
     <div class="notice">
-      <p><strong>Your Code Belongs to You:</strong> You retain 100% intellectual property ownership, copyright, and patent rights over any code, scripts, libraries, or data you write, run, or store in PyPad. Pixelabs claims zero ownership or rights over your code.</p>
+      <p><strong>You Own Your Code:</strong> You retain 100% intellectual property ownership, copyright, and patent rights over any scripts, algorithms, code, and files you write, run, or store in PyPad. Pixelabs claims zero ownership or rights over your code.</p>
     </div>
 
-    <h2>3. Execution & Safety Disclaimer</h2>
-    <p>PyPad is an execution environment for user-supplied code. You are solely responsible for scripts you run. Pixelabs Digital Services is not liable for data loss, hardware strain, infinite loops, or system errors resulting from user-executed code.</p>
+    <h2>3. Sandbox Boundaries & Acceptable Use</h2>
+    <p>PyPad provides a shared, resource-contained computing environment. You agree to use the Service responsibly and must NOT:</p>
+    <ul>
+      <li>Attempt to bypass or exploit the pre-execution code validator (<code>validator.js</code>) or subprocess isolation barriers.</li>
+      <li>Attempt to execute unauthorized system commands, spawn arbitrary processes, or import blocked system/OS modules (including <code>os</code>, <code>subprocess</code>, <code>ctypes</code>, or <code>resource</code>).</li>
+      <li>Attempt to initiate unauthorized outbound network sockets or ports using blocked modules (including <code>socket</code>, <code>ssl</code>, <code>ftplib</code>, or <code>telnetlib</code>).</li>
+      <li>Launch denial-of-service attempts, fork bombs, cryptocurrency miners, or memory exhaustion attacks against the server.</li>
+      <li>Attempt to access, read, or modify files outside your designated workspace directory or traverse path structures (e.g., using <code>../</code>).</li>
+    </ul>
 
-    <h2>4. Warranty Disclaimer & Limitation of Liability</h2>
-    <p>THE APPLICATION IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND. IN NO EVENT SHALL PIXELABS DIGITAL SERVICES OR ITS AUTHORS BE LIABLE FOR ANY DAMAGES, INCLUDING DATA LOSS OR LOSS OF PROFITS, ARISING OUT OF THE USE OF PYPAD.</p>
+    <h2>4. Resource Quotas & Execution Limits</h2>
+    <p>To ensure fair access and server stability, PyPad enforces automated resource constraints:</p>
+    <ul>
+      <li><strong>Execution Timeouts:</strong> Scripts exceeding standard runtime limits or idle thresholds are automatically terminated.</li>
+      <li><strong>Memory & Process Caps:</strong> Subprocesses are constrained by system <code>ulimit</code> memory caps.</li>
+      <li><strong>Workspace Quotas:</strong> Workspace file storage is bounded by per-user and global byte limits. Expired or inactive ephemeral workspaces may be cleaned periodically by automated sweepers.</li>
+    </ul>
+    <p>Always maintain your own local backups of valuable scripts and files.</p>
 
-    <h2>5. Governing Law</h2>
-    <p>These Terms are governed by the laws of India. Any legal dispute shall be subject to the exclusive jurisdiction of the competent courts of India.</p>
+    <h2>5. Disclaimer of Warranties ("AS IS")</h2>
+    <p>THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR UNINTERRUPTED EXECUTION. PIXELABS DOES NOT WARRANT THAT CODE EXECUTION WILL BE ERROR-FREE OR THAT SAVED WORKSPACES WILL BE PERMANENTLY PRESERVED.</p>
 
-    <h2>6. Contact</h2>
-    <p>For inquiries regarding these Terms, contact us at:</p>
+    <h2>6. Limitation of Liability</h2>
+    <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL PIXELABS DIGITAL SERVICES, ITS AUTHORS, OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOSS OF CODE, LOSS OF DATA, SYSTEM DOWNTIME, OR BUSINESS INTERRUPTION ARISING FROM THE USE OF THE SERVICE.</p>
+
+    <h2>7. Governing Law</h2>
+    <p>These Terms shall be governed by and construed in accordance with the laws of India. Any legal proceedings arising out of or related to these Terms shall be subject to the exclusive jurisdiction of the competent courts of India.</p>
+
+    <h2>8. Contact</h2>
+    <p>For questions or notices regarding these Terms, please contact:</p>
     <ul>
       <li><strong>Entity:</strong> Pixelabs Digital Services</li>
       <li><strong>Email:</strong> <a href="mailto:hello@pixelabs.in">hello@pixelabs.in</a></li>

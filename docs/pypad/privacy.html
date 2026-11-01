@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy | PyPad by Pixelabs</title>
-  <meta name="description" content="Official Privacy Policy for PyPad by Pixelabs. Local code execution, zero telemetry, Google Play Store compliant.">
+  <title>Privacy Policy | PyPad</title>
+  <meta name="description" content="Official Privacy Policy for PyPad (Mobile Py IDE) by Pixelabs. Sandboxed execution, zero telemetry, private workspaces.">
   <link rel="stylesheet" href="../assets/css/legal.css">
   <script src="../assets/js/theme.js"></script>
 </head>
@@ -41,32 +41,53 @@
 
     <h1>Privacy Policy for PyPad</h1>
     <div class="doc-meta">
-      Effective Date: November 1, 2026 &nbsp;|&nbsp; Application: PyPad &nbsp;|&nbsp; Publisher: Pixelabs Digital Services
+      Effective Date: November 1, 2026 &nbsp;|&nbsp; Service: PyPad (Mobile Py IDE) &nbsp;|&nbsp; Publisher: Pixelabs Digital Services
     </div>
 
     <div class="notice">
-      <p><strong>Local-First Guarantee:</strong> PyPad executes Python code locally on your device within an isolated sandbox. Your scripts, data files, and console outputs are never transmitted to any external server.</p>
+      <p><strong>Privacy Commitment:</strong> PyPad is a sandboxed Python IDE designed with zero telemetry. We do not track users, log private code to databases, sell personal data, or bundle advertising SDKs.</p>
     </div>
 
     <h2>1. Overview</h2>
-    <p>PyPad is developed by Pixelabs Digital Services ("Pixelabs", "we", "us") as a private, offline development environment. We operate under strict Privacy by Design principles.</p>
+    <p>PyPad is developed by Pixelabs Digital Services ("Pixelabs", "we", "us") to provide a lightweight, browser-accessible Python coding environment for mobile devices and desktop computers. This Privacy Policy details how code, execution streams, and workspace files are handled by the PyPad backend.</p>
 
     <h2>2. Information We Do Not Collect</h2>
     <ul>
-      <li><strong>No Script or Code Logging:</strong> Code you write, execute, or debug remains strictly on your device. We do not read, transmit, or analyze your Python scripts.</li>
-      <li><strong>No Personal Identifiable Information (PII):</strong> We do not collect names, email addresses, phone numbers, or account credentials.</li>
-      <li><strong>No Device Identifiers:</strong> We do not track Android Advertising IDs (AAID), IMEI numbers, or hardware identifiers.</li>
-      <li><strong>No Third-Party Analytics:</strong> PyPad contains no advertising SDKs, tracking pixels, or telemetry beacons.</li>
+      <li><strong>No Mandatory Personal Identification:</strong> You are not required to provide your name, phone number, physical address, or payment details to use PyPad.</li>
+      <li><strong>No Permanent Code Archiving:</strong> We do not index, analyze, train AI models on, or store executed script code in persistent backend log databases.</li>
+      <li><strong>No Third-Party Analytics or Trackers:</strong> PyPad contains zero tracking pixels, zero analytics SDKs, and zero advertising beacons.</li>
+      <li><strong>No Cross-Site Fingerprinting:</strong> We do not track your activity across other websites or services.</li>
     </ul>
 
-    <h2>3. Local Storage</h2>
-    <p>All scripts, notebooks, project files, and application settings are stored strictly within the application's isolated local sandbox. You can export, back up, or permanently delete your files at any time.</p>
+    <h2>3. Code Execution & Data Flow</h2>
+    <p>When you execute a Python script or interact with the REPL console:</p>
+    <ul>
+      <li><strong>Ephemeral Execution Sandbox:</strong> Your code is written to an isolated temporary file in system temp space (<code>/tmp/...</code>) solely for the duration of the execution. Once the process completes, errors, or reaches its timeout, the temporary file is immediately and permanently deleted.</li>
+      <li><strong>Live Streaming Streams:</strong> Standard output (<code>stdout</code>), error output (<code>stderr</code>), and interactive inputs (<code>stdin</code>) are streamed in real time over HTTPS using Server-Sent Events (SSE) and WebSockets directly between your browser and the spawned Python subprocess. These terminal streams are not logged to disk.</li>
+      <li><strong>Subprocess Containment:</strong> Python processes run under <code>python3 -I -B -q -u</code> with strict CPU timeouts and <code>ulimit</code> memory limits. The runner blocks raw network socket calls to prevent external connections.</li>
+      <li><strong>Pre-Execution Code Validator:</strong> PyPad's built-in AST validator (<code>validator.js</code>) verifies code in volatile memory prior to execution solely to enforce safety boundaries (e.g., preventing OS-level tampering). The code is not stored during this check.</li>
+    </ul>
 
-    <h2>4. Children's Privacy (COPPA & GDPR-K Compliance)</h2>
-    <p>Because PyPad operates offline with zero tracking or data collection, it is safe for educational, school, and academic environments without age-restricted data risks.</p>
+    <h2>4. Workspace Storage</h2>
+    <p>If you utilize PyPad's workspace feature to save scripts and assets:</p>
+    <ul>
+      <li>Files are stored within a dedicated, isolated workspace directory on the server.</li>
+      <li>Workspaces are constrained by storage quotas (<code>perUserLimitBytes</code>) and protected by path sanitization (<code>safePath</code>) to prevent directory traversal.</li>
+      <li>An automated background sweeper cleans inactive or expired temporary workspace buffers.</li>
+      <li>You can download, view, or permanently delete your workspace files directly through the Files panel at any time.</li>
+    </ul>
 
-    <h2>5. Contact Us</h2>
-    <p>For inquiries regarding PyPad privacy practices, please contact:</p>
+    <h2>5. Infrastructure & Security Headers</h2>
+    <p>PyPad delivers strict web security headers to protect your session:</p>
+    <ul>
+      <li><code>X-Content-Type-Options: nosniff</code></li>
+      <li><code>X-Frame-Options: DENY</code></li>
+      <li><code>Referrer-Policy: no-referrer</code></li>
+    </ul>
+    <p>Standard server request logs (such as request timestamps and HTTP status codes) are maintained temporarily for system diagnostics and rate-limiting enforcement, and contain no script payload data.</p>
+
+    <h2>6. Contact Us</h2>
+    <p>For questions or privacy inquiries regarding PyPad, please contact:</p>
     <ul>
       <li><strong>Organization:</strong> Pixelabs Digital Services</li>
       <li><strong>Email:</strong> <a href="mailto:hello@pixelabs.in">hello@pixelabs.in</a></li>
