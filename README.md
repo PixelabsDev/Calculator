@@ -159,9 +159,10 @@ Pixelabs Calculator is engineered with privacy as a foundational principle. It i
 - **100% Offline Calculations**: All formulas, trigonometry, arithmetic, and evaluations run locally on the device CPU with zero internet permissions.
 - **Zero Background Tracking**: No third-party ad networks, no analytics trackers, and zero telemetry SDKs.
 - **Voluntary User Feedback**: In-app feedback submissions require explicit, voluntary user opt-in consent with transparent diagnostics toggles.
-- **Official Legal Center**: [https://policies.pixelabs.in/](https://policies.pixelabs.in/)
-- **Google Play Direct Policy URL**: [https://policies.pixelabs.in/privacy.html](https://policies.pixelabs.in/privacy.html)
-- **Terms & Conditions**: [https://policies.pixelabs.in/terms.html](https://policies.pixelabs.in/terms.html)
+- **Central Legal & Trust Center**: [https://policies.pixelabs.in/](https://policies.pixelabs.in/)
+- **Calculator Privacy Policy**: [https://policies.pixelabs.in/calculator/privacy.html](https://policies.pixelabs.in/calculator/privacy.html)
+- **Calculator Terms & Conditions**: [https://policies.pixelabs.in/calculator/terms.html](https://policies.pixelabs.in/calculator/terms.html)
+- **Google Play Direct URL**: [https://policies.pixelabs.in/privacy.html](https://policies.pixelabs.in/privacy.html) (auto-redirect)
 
 ---
 
