@@ -375,13 +375,13 @@ jobs:
       # 12. SLSA CRYPTOGRAPHIC BUILD PROVENANCE
       # =========================================================================
       - name: Generate SLSA Build Provenance Attestation (AAB)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         continue-on-error: true
         with:
           subject-path: app/build/outputs/bundle/release/*.aab
 
       - name: Generate SLSA Build Provenance Attestation (Universal APK)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         continue-on-error: true
         with:
           subject-path: app/build/outputs/apk/release/*.apk
