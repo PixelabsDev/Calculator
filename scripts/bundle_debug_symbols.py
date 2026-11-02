@@ -74,28 +74,6 @@ def main():
     print(f"✓ Generated native debug symbols archive:")
     print(f"    Path: {symbols_zip}")
     print(f"    Size: {zip_size:,} bytes ({so_count} native binaries)")
-
-    # 4. Inject symbols into release AAB if available
-    aab_pattern = os.path.join(project_root, "app/build/outputs/bundle/release/*.aab")
-    aab_files = glob.glob(aab_pattern)
-    for aab in aab_files:
-        print(f"✓ Injecting native debug symbols into AAB: {aab}")
-        with zipfile.ZipFile(aab, "a", compression=zipfile.ZIP_DEFLATED) as zf:
-            existing_names = set(zf.namelist())
-            for root, dirs, files in os.walk(lib_dir):
-                for f in sorted(files):
-                    if f.endswith(".so"):
-                        full_path = os.path.join(root, f)
-                        rel_path = os.path.relpath(full_path, lib_dir)
-                        arc_path = f"BUNDLE-METADATA/com.android.tools.build.debugsymbols/{rel_path}"
-                        if arc_path not in existing_names:
-                            zf.write(full_path, arc_path)
-                            print(f"    + Embedded: {arc_path}")
-                        else:
-                            print(f"    (Already embedded): {arc_path}")
-                            
-        print(f"✓ AAB native debug symbols bundling complete: {aab}")
-
     print("===================================================================")
     return 0
 
