@@ -60,8 +60,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Image Verification Dependencies
-        run: pip install pillow
+      - name: Install Python Publishing & Verification Dependencies
+        run: pip install pillow google-api-python-client google-auth
 
       - name: Re-generate Actual Screenshots from Source Code (Roborazzi JVM)
         if: ${{ inputs.regenerate_screenshots }}
@@ -129,25 +129,20 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "key_path=$KEY_PATH" >> $GITHUB_OUTPUT
 
-      - name: Sync Metadata & Screenshots via Fastlane Supply
+      - name: Publish Visual Assets & Metadata to Google Play Console
         env:
           PLAY_KEY_FILE: ${{ steps.play-auth.outputs.key_path }}
           VALIDATE_ONLY: ${{ inputs.validate_only }}
         run: |
           VALIDATE_FLAG=""
           if [ "$VALIDATE_ONLY" = "true" ]; then
-            VALIDATE_FLAG="--validate_only true"
+            VALIDATE_FLAG="--validate-only"
           fi
           
-          fastlane supply \
-            --package_name "com.aistudio.calculator.gtypxz" \
-            --json_key "$PLAY_KEY_FILE" \
-            --metadata_path "fastlane/metadata/android" \
-            --skip_upload_apk true \
-            --skip_upload_aab true \
-            --skip_upload_changelogs true \
-            --skip_upload_images true \
-            --skip_upload_screenshots false \
+          python3 scripts/sync_play_store_assets.py \
+            --key-file "$PLAY_KEY_FILE" \
+            --package-name "com.aistudio.calculator.gtypxz" \
+            --metadata-dir "fastlane/metadata/android/en-US" \
             $VALIDATE_FLAG
 
       - name: Clean up Credentials
