@@ -335,7 +335,7 @@ jobs:
       # 11. UPLOAD PIPELINE ARTIFACTS
       # =========================================================================
       - name: Upload Release AAB Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: calculator-v${{ steps.versioning.outputs.version_name }}-aab
           path: app/build/outputs/bundle/release/*.aab
@@ -343,7 +343,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Universal Sideload APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: calculator-v${{ steps.versioning.outputs.version_name }}-universal-apk
           path: app/build/outputs/apk/release/*.apk
@@ -351,7 +351,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Proguard Mapping & Native Symbols Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: debug-symbols-and-mapping-v${{ steps.versioning.outputs.version_name }}
           path: |
@@ -361,7 +361,7 @@ jobs:
           retention-days: 30
 
       - name: Upload SBOM & Compliance Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compliance-sbom-v${{ steps.versioning.outputs.version_name }}
           path: |
