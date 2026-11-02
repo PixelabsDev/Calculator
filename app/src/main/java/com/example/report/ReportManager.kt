@@ -2,13 +2,19 @@ package com.example.report
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.IOException
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
+import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -40,7 +46,24 @@ class ReportManager(private val context: Context) {
         const val WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwe1eIw5cNmY2zoa1LMmO3D5bElhnfVE6MpbDk1wc6iePfiQ4Mh_YeNQYAye2TNsune/exec"
     }
 
+    private fun isNetworkConnected(): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (_: Exception) {
+            true // fallback to attempting request if check fails
+        }
+    }
+
     suspend fun submitReportToSheet(report: UserReport): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!isNetworkConnected()) {
+            return@withContext Result.failure(
+                Exception("No internet connection detected. Please connect to Wi-Fi or mobile data, or use Email / Copy below.")
+            )
+        }
+
         var connection: HttpURLConnection? = null
         try {
             val jsonPayload = JSONObject().apply {
@@ -95,10 +118,18 @@ class ReportManager(private val context: Context) {
             if (responseCode in 200..299 && responseBody.contains("\"status\":\"success\"")) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Submission response unexpected ($responseCode): $responseBody"))
+                Result.failure(Exception("Server returned status ($responseCode). Please try again or use Email."))
             }
+        } catch (e: UnknownHostException) {
+            Result.failure(Exception("Unable to connect to Google service. Please check your internet connection or Private DNS, or use Email / Copy below."))
+        } catch (e: SocketTimeoutException) {
+            Result.failure(Exception("Connection timed out. Please check your network and try again, or use Email."))
+        } catch (e: ConnectException) {
+            Result.failure(Exception("Connection failed. Please check your internet connection or use Email."))
+        } catch (e: IOException) {
+            Result.failure(Exception("Network error. Please check your connection or send via Email."))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(e.localizedMessage ?: "Unexpected error occurred. Please use Email or Copy."))
         } finally {
             try {
                 connection?.disconnect()
