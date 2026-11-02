@@ -249,18 +249,24 @@ jobs:
           retention-days: 30
 
       # =========================================================================
-      # 9. LOCATE OPTIONAL PROGUARD MAPPING FILE
+      # 9. LOCATE PROGUARD MAPPING FILE
       # =========================================================================
-      - name: Locate Mapping File (if obfuscated)
+      - name: Locate Mapping File
         id: mapping-locator
         run: |
-          MAP_FILE=$(find app/build/outputs/mapping/release -name "mapping.txt" 2>/dev/null | head -n 1)
-          if [ -n "$MAP_FILE" ] && [ -f "$MAP_FILE" ]; then
+          MAP_FILE="app/build/outputs/mapping/release/mapping.txt"
+          if [ -f "$MAP_FILE" ]; then
             echo "mapping_file=$MAP_FILE" >> $GITHUB_OUTPUT
             echo "Found mapping file: $MAP_FILE"
           else
-            echo "mapping_file=" >> $GITHUB_OUTPUT
-            echo "No mapping file found (minification is disabled)."
+            FOUND_FILE=$(find app/build/outputs/mapping -name "mapping.txt" 2>/dev/null | head -n 1)
+            if [ -n "$FOUND_FILE" ] && [ -f "$FOUND_FILE" ]; then
+              echo "mapping_file=$FOUND_FILE" >> $GITHUB_OUTPUT
+              echo "Found mapping file: $FOUND_FILE"
+            else
+              echo "mapping_file=" >> $GITHUB_OUTPUT
+              echo "No mapping file found."
+            fi
           fi
 
       # =========================================================================
@@ -288,6 +294,7 @@ jobs:
           files: |
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/apk/release/*.apk
+            app/build/outputs/mapping/release/mapping.txt
           draft: false
           prerelease: false
 

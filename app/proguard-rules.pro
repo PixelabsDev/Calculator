@@ -1,21 +1,47 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# =========================================================================
+# Pixelabs Calculator - ProGuard & R8 Obfuscation & Shrinking Rules
+# =========================================================================
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# 1. Preserve SourceFile and LineNumberTable for Play Console deobfuscation
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# 2. General Kotlin & Coroutines reflection metadata
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 3. AndroidX Room Persistence Library
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class * {
+    <fields>;
+    <init>(...);
+}
+-keep @androidx.room.Dao interface * {
+    <methods>;
+}
+-dontwarn androidx.room.paging.**
+
+# 4. App Data Models (History entries & User feedback payload)
+-keepclassmembers class com.example.data.** {
+    <fields>;
+    <init>(...);
+}
+-keepclassmembers class com.example.report.UserReport {
+    <fields>;
+    <init>(...);
+}
+
+# 5. Jetpack Compose
+-keepclassmembers class androidx.compose.ui.platform.AndroidComposeView {
+    <fields>;
+    <init>(...);
+}
+-dontwarn androidx.compose.**
+
+# 6. Google Play Integrity & Services
+-keep class com.google.android.play.core.integrity.** { *; }
+-dontwarn com.google.android.play.core.**
