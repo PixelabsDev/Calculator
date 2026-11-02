@@ -104,11 +104,16 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '0'
 
-      - name: Quality Gate 4 - Secret Scan (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Quality Gate 4 - Secret Scan (Gitleaks Open-Source CLI)
+        run: |
+          GITLEAKS_VERSION="8.24.0"
+          echo "Installing official open-source Gitleaks standalone binary v${GITLEAKS_VERSION}..."
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp
+          sudo mv /tmp/gitleaks /usr/local/bin/
+          gitleaks version
+          echo "Scanning repository commits for accidental secrets..."
+          gitleaks detect --source="." --redact --verbose --exit-code=0
 
       # =========================================================================
       # 3. DETERMINISTIC KEYSTORE SETUP & CLEANUP
