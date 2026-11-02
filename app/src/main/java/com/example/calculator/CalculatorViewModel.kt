@@ -191,8 +191,16 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         _isScientificExpanded.value = !_isScientificExpanded.value
     }
 
+    fun setScientificExpanded(expanded: Boolean) {
+        _isScientificExpanded.value = expanded
+    }
+
     fun toggleRadMode() {
         _isRadMode.value = !_isRadMode.value
+    }
+
+    fun setRadMode(isRad: Boolean) {
+        _isRadMode.value = isRad
     }
 
     fun toggleInvMode() {
@@ -205,6 +213,10 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             ThemeMode.LIGHT -> ThemeMode.DARK
             ThemeMode.DARK -> ThemeMode.SYSTEM
         }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
     }
 
     fun handleKeyPress(key: String) {

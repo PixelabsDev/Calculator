@@ -1,1 +1,1 @@
-Offline, privacy-first scientific calculator with zero telemetry and modern Material You UI.
+Offline, privacy-first scientific calculator with zero tracking & Material You.

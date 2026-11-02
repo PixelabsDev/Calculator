@@ -1,0 +1,149 @@
+name: Sync Play Store Metadata & Visual Assets (On-Demand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      regenerate_screenshots:
+        description: 'Re-generate screenshots from Compose UI test layouts before syncing'
+        required: true
+        type: boolean
+        default: true
+      validate_only:
+        description: 'Validate metadata without actually publishing to Google Play (Dry Run)'
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: sync-store-assets
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync-assets:
+    name: Sync Real UI Screenshots & Metadata to Google Play Console
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          accept-android-sdk-licenses: true
+
+      - name: Set up Ruby & Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+
+      - name: Install Fastlane
+        run: gem install fastlane --no-document
+
+      - name: Re-generate Actual Screenshots from Source Code (Roborazzi JVM)
+        if: ${{ inputs.regenerate_screenshots }}
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest --tests "com.example.PlayStoreScreenshotTest" -Proborazzi.test.record=true --stacktrace
+          python3 -c "
+          import os
+          from PIL import Image
+          base = 'fastlane/metadata/android/en-US/images'
+          for root, dirs, files in os.walk(base):
+              for f in sorted(files):
+                  if f.endswith('.png'):
+                      p = os.path.join(root, f)
+                      with Image.open(p) as img:
+                          if img.mode != 'RGB':
+                              img.convert('RGB').save(p, 'PNG')
+          "
+
+      - name: Verify Screenshot Integrity & Dimensions
+        run: |
+          python3 -c "
+          import os, sys
+          from PIL import Image
+          base = 'fastlane/metadata/android/en-US/images'
+          categories = ['phoneScreenshots', 'sevenInchScreenshots', 'tenInchScreenshots']
+          for cat in categories:
+              d = os.path.join(base, cat)
+              if not os.path.exists(d):
+                  print(f'::error::Missing screenshot directory: {cat}')
+                  sys.exit(1)
+              imgs = [f for f in os.listdir(d) if f.endswith('.png')]
+              if len(imgs) < 4:
+                  print(f'::error::Expected 4 real screenshots in {cat}, found {len(imgs)}')
+                  sys.exit(1)
+              for img in sorted(imgs):
+                  p = os.path.join(d, img)
+                  with Image.open(p) as im:
+                      w, h = im.size
+                      print(f'Verified {cat}/{img}: {w}x{h} ({im.format}, {im.mode})')
+                      if im.mode != 'RGB':
+                          print(f'::error::{img} must be 24-bit PNG without alpha channel')
+                          sys.exit(1)
+          print('All actual layout screenshots verified against Google Play Graphic Guidelines.')
+          "
+
+      - name: Upload Store Assets Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-play-store-assets
+          path: fastlane/metadata/android/en-US/images/
+          retention-days: 30
+
+      - name: Prepare Play Console Service Account
+        id: play-auth
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_STORE_JSON_KEY || secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$PLAY_JSON" ]; then
+            echo "::error::Google Play Console service account JSON secret (PLAY_SERVICE_ACCOUNT_JSON) is not set!"
+            exit 1
+          fi
+          KEY_PATH="${{ runner.temp }}/play-service-account.json"
+          echo "$PLAY_JSON" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "key_path=$KEY_PATH" >> $GITHUB_OUTPUT
+
+      - name: Sync Metadata & Screenshots via Fastlane Supply
+        env:
+          PLAY_KEY_FILE: ${{ steps.play-auth.outputs.key_path }}
+          VALIDATE_ONLY: ${{ inputs.validate_only }}
+        run: |
+          VALIDATE_FLAG=""
+          if [ "$VALIDATE_ONLY" = "true" ]; then
+            VALIDATE_FLAG="--validate_only true"
+          fi
+          
+          fastlane supply \
+            --package_name "com.aistudio.calculator.gtypxz" \
+            --json_key "$PLAY_KEY_FILE" \
+            --metadata_path "fastlane/metadata/android" \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_changelogs false \
+            --skip_upload_images false \
+            --skip_upload_screenshots false \
+            $VALIDATE_FLAG
+
+      - name: Clean up Credentials
+        if: always()
+        run: |
+          KEY_PATH="${{ runner.temp }}/play-service-account.json"
+          [ -f "$KEY_PATH" ] && shred -u -z "$KEY_PATH" 2>/dev/null || rm -f "$KEY_PATH"
