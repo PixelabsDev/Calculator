@@ -55,3 +55,8 @@
     public static int w(...);
     public static int println(...);
 }
+
+# 8. R8 DEX Code Optimization & Aggressive Obfuscation
+# Allow R8 to widen access modifiers and aggressively optimize class hierarchies
+-allowaccessmodification
+-repackageclasses ''
