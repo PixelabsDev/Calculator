@@ -2,8 +2,6 @@ package com.example.report
 
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
@@ -46,24 +44,7 @@ class ReportManager(private val context: Context) {
         const val WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwe1eIw5cNmY2zoa1LMmO3D5bElhnfVE6MpbDk1wc6iePfiQ4Mh_YeNQYAye2TNsune/exec"
     }
 
-    private fun isNetworkConnected(): Boolean {
-        return try {
-            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
-            val network = cm.activeNetwork ?: return false
-            val caps = cm.getNetworkCapabilities(network) ?: return false
-            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        } catch (_: Exception) {
-            true // fallback to attempting request if check fails
-        }
-    }
-
     suspend fun submitReportToSheet(report: UserReport): Result<Unit> = withContext(Dispatchers.IO) {
-        if (!isNetworkConnected()) {
-            return@withContext Result.failure(
-                Exception("No internet connection detected. Please connect to Wi-Fi or mobile data, or use Email / Copy below.")
-            )
-        }
-
         var connection: HttpURLConnection? = null
         try {
             val jsonPayload = JSONObject().apply {
