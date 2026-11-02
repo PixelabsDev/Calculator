@@ -1,120 +1,99 @@
 /**
- * Pixelabs Calculator - Google Sheet Feedback Webhook with 90-Day (3 Months) Auto-Deletion
- *
- * Requirements:
- * 1. Collects feedback submissions from the Calculator Android app (bug reports, calculations, suggestions, feedback).
- * 2. Records the exact receipt date in Column A.
- * 3. Automatically deletes any feedback rows older than 90 days (3 months) calculated from the date of receipt.
- * 4. Includes both real-time purge on receipt and scheduled daily background purge trigger.
+ * Pixelabs Calculator - Google Sheet Feedback Webhook
+ * Automatic 3-Month (90-Day) Retention & Auto-Purge
  */
 
-// Target sheet name inside the spreadsheet
-const SHEET_NAME = "Feedback";
-
-// Retention period: 90 days (approx. 3 months)
-const RETENTION_DAYS = 90;
-
-/**
- * Webhook handler for POST requests from Calculator app
- */
 function doPost(e) {
   try {
-    // Acquire a script lock to prevent race conditions during concurrent submissions
-    const lock = LockService.getScriptLock();
-    lock.waitLock(10000); // Wait up to 10 seconds
-
-    const sheet = getOrCreateFeedbackSheet();
-    const payload = JSON.parse(e.postData.contents);
-    const receivedAt = new Date(); // Exact server receipt timestamp (used for 3-month calculation)
-
-    // Append new feedback record
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getActiveSheet() || ss.getSheets()[0];
+    var data = JSON.parse(e.postData.contents);
+    
+    // Receipt timestamp: use client timestamp or current server time
+    var timestamp = data.timestamp || Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT", "yyyy-MM-dd HH:mm:ss");
+    
+    // Append new feedback row (maintaining original 9-column structure)
     sheet.appendRow([
-      receivedAt,                                      // Column A: Received Date (Trigger for 3-Month Auto-Delete)
-      payload.timestamp || receivedAt.toISOString(),   // Column B: Client Timestamp
-      payload.category || "Feedback",                  // Column C: Category (Bug Report, Calculation, etc.)
-      payload.title || "User Feedback",                // Column D: Subject / Summary
-      payload.description || "",                       // Column E: Details & Description
-      payload.email || "",                             // Column F: User Email (Optional)
-      payload.deviceModel || "N/A",                    // Column G: Device Model
-      payload.androidVersion || "N/A",                 // Column H: Android Version
-      payload.appVersion || "N/A",                     // Column I: App Version
-      payload.angleMode || "N/A"                       // Column J: Angle Mode (DEG/RAD)
+      timestamp,
+      data.category || "Feedback",
+      data.title || "User Feedback",
+      data.description || "",
+      data.email || "",
+      data.deviceModel || "N/A",
+      data.androidVersion || "N/A",
+      data.appVersion || "N/A",
+      data.angleMode || "N/A"
     ]);
 
-    // Automatically purge entries older than 3 months upon every new submission
+    // Automatically purge rows older than 3 months (90 days)
     deleteFeedbackOlderThanThreeMonths(sheet);
 
-    lock.releaseLock();
-
     return ContentService.createTextOutput(JSON.stringify({
-      status: "success",
-      message: "Feedback recorded successfully."
+      "status": "success",
+      "message": "Feedback recorded successfully"
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
-      status: "error",
-      message: error.toString()
+      "status": "error",
+      "message": error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 /**
- * Purges any row where (Now - Received Date) > 90 days (3 months).
- * Iterates backwards from bottom to top to preserve valid row indices during deletion.
+ * Automatically deletes feedback entries older than 3 months (90 days)
+ * calculated from the received date in Column A.
  */
 function deleteFeedbackOlderThanThreeMonths(sheet) {
   if (!sheet) {
-    sheet = getOrCreateFeedbackSheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    sheet = ss.getActiveSheet() || ss.getSheets()[0];
   }
-
-  const lastRow = sheet.getLastRow();
-  // If sheet only has headers or is empty, nothing to delete
+  
+  var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return;
 
-  const now = new Date();
-  const cutoffTime = now.getTime() - (RETENTION_DAYS * 24 * 60 * 60 * 1000); // 90 days in milliseconds
+  var now = new Date().getTime();
+  var cutoff = now - (90 * 24 * 60 * 60 * 1000); // 90 days in ms
 
-  // Read Column A (Received Date) starting from row 2 down to lastRow
-  const dateRange = sheet.getRange(2, 1, lastRow - 1, 1);
-  const dateValues = dateRange.getValues();
+  // Column A timestamps from row 2
+  var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
 
-  // Walk backwards from bottom row to row 2
-  for (let i = dateValues.length - 1; i >= 0; i--) {
-    const rawValue = dateValues[i][0];
-    if (!rawValue) continue;
+  // Iterate backwards from bottom to top
+  for (var i = values.length - 1; i >= 0; i--) {
+    var raw = values[i][0];
+    if (!raw) continue;
+    
+    var rowDate = new Date(raw);
+    if (isNaN(rowDate.getTime()) && typeof raw === "string") {
+      rowDate = new Date(raw.replace(/-/g, "/"));
+    }
 
-    const rowDate = new Date(rawValue);
-    if (!isNaN(rowDate.getTime()) && rowDate.getTime() < cutoffTime) {
-      // Row index is 1-based, offset by header (+2)
+    if (!isNaN(rowDate.getTime()) && rowDate.getTime() < cutoff) {
       sheet.deleteRow(i + 2);
     }
   }
 }
 
 /**
- * Scheduled trigger function that runs daily to purge records older than 3 months
- * even if no new submissions occur on that day.
+ * Daily trigger handler: purges records older than 3 months
  */
 function autoDeleteDailyCleanupTrigger() {
-  const sheet = getOrCreateFeedbackSheet();
-  deleteFeedbackOlderThanThreeMonths(sheet);
+  deleteFeedbackOlderThanThreeMonths();
 }
 
 /**
- * One-time setup function: Run this function once from the Apps Script Editor
- * to install the automated daily 2:00 AM auto-delete trigger.
+ * One-time setup: installs the automated daily trigger (2:00 AM)
  */
 function setupDailyAutoDeleteTrigger() {
-  // Remove any pre-existing cleanup triggers to avoid duplicate runs
-  const triggers = ScriptApp.getProjectTriggers();
-  for (let i = 0; i < triggers.length; i++) {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === "autoDeleteDailyCleanupTrigger") {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
 
-  // Create a time-driven trigger running daily at 2:00 AM
   ScriptApp.newTrigger("autoDeleteDailyCleanupTrigger")
     .timeBased()
     .everyDays(1)
@@ -122,35 +101,4 @@ function setupDailyAutoDeleteTrigger() {
     .create();
 
   Logger.log("Daily auto-delete trigger installed successfully (runs daily at 2:00 AM).");
-}
-
-/**
- * Helper to ensure the Feedback sheet exists with formatted headers
- */
-function getOrCreateFeedbackSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
-  }
-
-  if (sheet.getLastRow() === 0) {
-    const headers = [
-      "Received Date",
-      "Client Timestamp",
-      "Feedback Type",
-      "Subject / Summary",
-      "Details & Description",
-      "User Email",
-      "Device Model",
-      "Android OS Version",
-      "App Version",
-      "Angle Mode"
-    ];
-    sheet.appendRow(headers);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#EDE7F6");
-    sheet.setFrozenRows(1);
-  }
-
-  return sheet;
 }
