@@ -1,7 +1,10 @@
 package com.example
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -119,6 +122,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -185,7 +190,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
     var showHistoryDrawer by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showIntegrityDialog by remember { mutableStateOf(false) }
-    var showPrivacyScreen by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
@@ -222,22 +226,16 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
 
     val iconColor = if (isDark) Color(0xFFF3EDFF) else Color(0xFF191622)
 
-    if (showPrivacyScreen) {
-        PrivacyAndTermsScreen(
-            onBack = { showPrivacyScreen = false },
-            isDark = isDark
-        )
-    } else {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            contentWindowInsets = WindowInsets(0, 0, 0, 0)
-        ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(appBgColor)
-                .padding(padding)
-        ) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(appBgColor)
+            .padding(padding)
+    ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -258,7 +256,9 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             vibrate(false)
                             showHistoryDrawer = !showHistoryDrawer
                         },
-                        modifier = Modifier.testTag("history_button")
+                        modifier = Modifier
+                            .semantics { contentDescription = "Calculation History" }
+                            .testTag("history_button")
                     ) {
                         HistoryIcon(color = iconColor)
                     }
@@ -268,7 +268,9 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     ) {
                         IconButton(
                             onClick = { viewModel.toggleThemeMode() },
-                            modifier = Modifier.testTag("theme_toggle_button")
+                            modifier = Modifier
+                                .semantics { contentDescription = "Toggle Theme" }
+                                .testTag("theme_toggle_button")
                         ) {
                             when (themeMode) {
                                 com.example.calculator.ThemeMode.SYSTEM -> SystemModeIcon(color = iconColor)
@@ -280,7 +282,9 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         Box {
                             IconButton(
                                 onClick = { showMenu = true },
-                                modifier = Modifier.testTag("more_options_button")
+                                modifier = Modifier
+                                    .semantics { contentDescription = "More Options" }
+                                    .testTag("more_options_button")
                             ) {
                                 ThreeDotMenuIcon(color = iconColor)
                             }
@@ -290,9 +294,23 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 onDismissRequest = { showMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Privacy Policy & Terms") },
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("Privacy Policy & Terms")
+                                            Text("↗", color = iconColor.copy(alpha = 0.7f), fontSize = 12.sp)
+                                        }
+                                    },
                                     onClick = {
-                                        showPrivacyScreen = true
+                                        val intent = Intent(Intent.ACTION_VIEW, "https://policies.pixelabs.in/calculator/".toUri()).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        try {
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {}
                                         showMenu = false
                                     },
                                     modifier = Modifier.testTag("menu_privacy_terms")
@@ -739,6 +757,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 },
                                 modifier = Modifier
                                     .size(32.dp)
+                                    .semantics { contentDescription = if (isScientificExpanded) "Collapse scientific keypad" else "Expand scientific keypad" }
                                     .testTag("scientific_toggle")
                             ) {
                                 ChevronIcon(
@@ -1115,6 +1134,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                         vibrate(false)
                                         viewModel.handleKeyPress("⌫")
                                     }
+                                    .semantics { contentDescription = "Backspace" }
                                     .testTag("btn_backspace"),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1177,7 +1197,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
             )
         }
     }
-}
 
 @Composable
 fun InlineHistoryRow(
@@ -1547,6 +1566,24 @@ fun KeypadButton(
                 val isHeavy = label == "=" || label == "AC" || label == "C"
                 vibrate(isHeavy)
                 onClick()
+            }
+            .semantics {
+                contentDescription = when (label) {
+                    "AC" -> "Clear all"
+                    "C" -> "Clear"
+                    "⌫" -> "Backspace"
+                    "=" -> "Equals"
+                    "+" -> "Plus"
+                    "-" -> "Minus"
+                    "×" -> "Multiply"
+                    "÷" -> "Divide"
+                    "^" -> "Power"
+                    "√" -> "Square root"
+                    "π" -> "Pi"
+                    "%" -> "Percentage"
+                    "!" -> "Factorial"
+                    else -> label
+                }
             }
             .testTag("btn_$label"),
         contentAlignment = Alignment.Center
@@ -1935,7 +1972,9 @@ fun LandscapeCalculatorLayout(
                         } else {
                             if (isDark) Color(0xFF2B2930) else Color(0xFFF3EDF7)
                         },
-                        modifier = Modifier.testTag("land_scientific_toggle")
+                        modifier = Modifier
+                            .semantics { contentDescription = if (isLandScientificExpanded) "Collapse scientific keypad" else "Expand scientific keypad" }
+                            .testTag("land_scientific_toggle")
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -2242,6 +2281,7 @@ fun LandscapeCalculatorLayout(
                                         vibrate(false)
                                         viewModel.handleKeyPress("⌫")
                                     }
+                                    .semantics { contentDescription = "Backspace" }
                                     .testTag("btn_backspace"),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -2263,582 +2303,6 @@ fun LandscapeCalculatorLayout(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun PrivacyAndTermsScreen(
-    onBack: () -> Unit,
-    isDark: Boolean
-) {
-    BackHandler(onBack = onBack)
-    var selectedTab by remember { mutableStateOf(0) }
-
-    val bgColor = if (isDark) Color(0xFF0F0E14) else Color(0xFFF9F6FC)
-    val cardBg = if (isDark) Color(0xFF1B1824) else Color(0xFFFFFFFF)
-    val cardBorder = if (isDark) Color(0xFF2C2738) else Color(0xFFE8E0F0)
-    val textColor = if (isDark) Color(0xFFF3EDFF) else Color(0xFF191622)
-    val subtextColor = if (isDark) Color(0xFFA59EB5) else Color(0xFF6E6879)
-    val accentColor = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
-    val onAccentColor = if (isDark) Color(0xFF381E72) else Color(0xFFFFFFFF)
-    val iconColor = if (isDark) Color(0xFFF3EDFF) else Color(0xFF191622)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bgColor)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .testTag("screen_privacy_terms")
-    ) {
-        // 1. Top App Bar with back navigation
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.testTag("privacy_back_button")
-            ) {
-                ArrowBackIcon(color = iconColor, modifier = Modifier.size(24.dp))
-            }
-            Spacer(modifier = Modifier.width(4.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Privacy & Legal Notice",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
-                    )
-                )
-                Text(
-                    text = "Calculator by PixelabsDev • Official Terms",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = subtextColor
-                    )
-                )
-            }
-            IconButton(
-                onClick = onBack
-            ) {
-                LegalPolicyIcon(modifier = Modifier.size(22.dp), color = accentColor)
-            }
-        }
-
-        // 2. Segmented Navigation Tabs
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (isDark) Color(0xFF231F2E) else Color(0xFFEDE5F4))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selectedTab == 0) accentColor else Color.Transparent)
-                    .clickable { selectedTab = 0 }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Privacy Policy",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = if (selectedTab == 0) onAccentColor else (if (isDark) Color(0xFFCCC2DC) else Color(0xFF49454F))
-                    )
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selectedTab == 1) accentColor else Color.Transparent)
-                    .clickable { selectedTab = 1 }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Terms & Conditions",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = if (selectedTab == 1) onAccentColor else (if (isDark) Color(0xFFCCC2DC) else Color(0xFF49454F))
-                    )
-                )
-            }
-        }
-
-        // 3. Full-window scrollable legal content
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Overview Header Banner
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = cardBg),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(1.dp, RoundedCornerShape(16.dp))
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SecurityShieldIcon(
-                            modifier = Modifier.size(28.dp),
-                            color = accentColor
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Calculator",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor
-                                )
-                            )
-                            Text(
-                                text = "Developed & Published by PixelabsDev",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = accentColor,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Last updated: October 2026. This comprehensive legal document outlines our commitment to user privacy, offline local computing standards, and the terms of service governing this application.",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = subtextColor,
-                            lineHeight = 18.sp
-                        )
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        LegalBadge(text = "100% Offline", isDark = isDark)
-                        LegalBadge(text = "No Ads", isDark = isDark)
-                        LegalBadge(text = "Local Storage", isDark = isDark)
-                    }
-                }
-            }
-
-            if (selectedTab == 0) {
-                // Privacy Policy Detailed Cards
-                LegalSectionCard(
-                    number = "1",
-                    title = "Publisher Identity & Contact",
-                    body = "This software is designed, engineered, and published by PixelabsDev (Pixelabs Digital Services). We treat user privacy with absolute priority. You can reach our technical and legal support team anytime at hello@pixelabs.in or via our website at https://pixelabs.in.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "2",
-                    title = "Zero Math Telemetry & Offline Processing",
-                    body = "All calculations—including basic arithmetic, scientific trigonometric formulas (sin, cos, tan), logarithmic functions (ln, log), powers, roots, and angle computations—are performed 100% on your device CPU. We never transmit, log, intercept, or upload your calculation formulas or numeric entries to any external servers.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "3",
-                    title = "Local Database Persistence (Room)",
-                    body = "Your calculation history is stored locally within an encrypted/sandboxed SQLite Room database on your device storage. You retain complete ownership and control over this data. You can delete individual calculation records or completely purge your calculation history at any time with a single tap.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "4",
-                    title = "100% Offline Architecture & Zero Cloud Backup",
-                    body = "This application operates 100% offline with zero cloud backup or remote account synchronization. All calculations and history entries remain exclusively on your device hardware, guaranteeing complete privacy and zero data collection.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "5",
-                    title = "User Feedback & Voluntary Submissions",
-                    body = "The application operates fundamentally as an offline computing utility with zero background data collection, tracking, or telemetry. Submitting feedback, suggestions, or bug reports via the in-app tool is strictly voluntary and requires explicit opt-in consent before transmission. When you choose to submit feedback, the data categories processed include: (1) user-entered text (feedback type, subject, and description); (2) an optional contact email address (only if voluntarily provided for follow-up); and (3) optional non-identifiable technical diagnostics (device model, Android OS version, app version, and angle mode) solely to assist in diagnosing and fixing calculation or layout issues. This information is processed exclusively to troubleshoot bugs, refine mathematical formulas, and improve app stability. Feedback data is never sold, rented, shared with data brokers, or used for advertising or marketing tracking.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "6",
-                    title = "Device Integrity & Google Play Security",
-                    body = "The app integrates Google Play Integrity API checks locally to verify that the app binary has not been modified or tampered with and is running in a genuine Android environment. This check is purely for application security and anti-tampering verification.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "7",
-                    title = "Zero Advertising & No Data Selling",
-                    body = "PixelabsDev does not monetize this application through advertising networks, trackers, data brokers, or behavioral analytics SDKs. We do not sell, rent, or trade any user data to third parties under any circumstances.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "8",
-                    title = "System Permissions Explained",
-                    body = "• VIBRATE: Required to provide tactile haptic feedback during keypad button presses for an authentic calculator feel (can be adjusted in device settings).\n• INTERNET: Utilized strictly on-demand when you explicitly initiate and consent to transmitting a feedback or bug report. The core mathematical engine operates 100% offline with zero background network activity.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "9",
-                    title = "Children & Student Privacy",
-                    body = "This application is safe for users of all ages, including children and students. We do not knowingly collect personal data from minors, making it fully compliant with COPPA and GDPR regulations.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-            } else {
-                // Terms & Conditions Detailed Cards
-                LegalSectionCard(
-                    number = "1",
-                    title = "Acceptance of Agreement",
-                    body = "By downloading, installing, accessing, or using Calculator by PixelabsDev, you agree to comply with and be bound by these Terms and Conditions. If you disagree with any part of these terms, please discontinue use of the application.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "2",
-                    title = "Software License & Permitted Use",
-                    body = "PixelabsDev grants you a personal, non-transferable, non-exclusive, revocable license to use this calculator application for personal, educational, research, engineering, and commercial computational purposes in accordance with these terms.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "3",
-                    title = "Mathematical Accuracy & Disclaimer",
-                    body = "The application implements double-precision IEEE-754 floating-point computation algorithms. While designed to deliver high accuracy across arithmetic, trigonometric, and scientific functions, all calculation outputs are provided on an 'as-is' basis. Users are advised to independently verify critical architectural, medical, financial, or engineering calculations.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "4",
-                    title = "Intellectual Property Rights",
-                    body = "All algorithms, source code, user interface designs, custom graphic icons, typography pairings, and PixelabsDev brand assets are the exclusive intellectual property of PixelabsDev and protected under international copyright and intellectual property laws.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "5",
-                    title = "Software Updates & Modifications",
-                    body = "PixelabsDev reserves the right to periodically release software updates, enhance features, optimize performance, and adjust mathematical models to improve system stability and user experience.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "6",
-                    title = "User Feedback & Submissions License",
-                    body = "Any feedback, bug reports, feature suggestions, or computational ideas you voluntarily submit to PixelabsDev through the application or official communication channels are provided on a non-confidential basis. By submitting feedback, you grant PixelabsDev an irrevocable, perpetual, royalty-free, worldwide license to use, implement, adapt, and incorporate such feedback into the application without any obligation of compensation, accounting, or attribution to you.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "7",
-                    title = "Limitation of Liability",
-                    body = "To the maximum extent permitted by applicable law, PixelabsDev and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from the use or inability to use this software.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-
-                LegalSectionCard(
-                    number = "8",
-                    title = "Governing Law & Inquiries",
-                    body = "These terms shall be governed by and construed in accordance with applicable laws. For inquiries regarding licensing, enterprise usage, or terms clarification, please contact hello@pixelabs.in.",
-                    cardBg = cardBg,
-                    textColor = textColor,
-                    subtextColor = subtextColor,
-                    accentColor = accentColor
-                )
-            }
-
-            // Developer Contact Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) Color(0xFF221E2C) else Color(0xFFF1EAF8)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Official Support & Inquiries",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = textColor
-                        )
-                    )
-                    Text(
-                        text = "• Official Publisher: PixelabsDev\n• Support Email: hello@pixelabs.in\n• Official Website: https://pixelabs.in\n• Legal Portal: https://policies.pixelabs.in\n• Application: Calculator for Android",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = subtextColor,
-                            lineHeight = 20.sp
-                        )
-                    )
-                }
-            }
-
-            // Primary Back to Calculator Button
-            Button(
-                onClick = onBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 12.dp)
-                    .testTag("privacy_return_button"),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = accentColor,
-                    contentColor = onAccentColor
-                )
-            ) {
-                Text(
-                    text = "Back to Calculator",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    ),
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-
-            // Footer Copyright
-            Text(
-                text = "© 2026 PixelabsDev. All rights reserved.",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    color = subtextColor,
-                    textAlign = TextAlign.Center
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun LegalBadge(text: String, isDark: Boolean) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (isDark) Color(0xFF2C2738) else Color(0xFFEDE4F5))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.SemiBold,
-                color = if (isDark) Color(0xFFD0BCFF) else Color(0xFF593F8E)
-            )
-        )
-    }
-}
-
-@Composable
-fun LegalSectionCard(
-    number: String,
-    title: String,
-    body: String,
-    cardBg: Color,
-    textColor: Color,
-    subtextColor: Color,
-    accentColor: Color
-) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(accentColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = number,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            fontSize = 11.sp
-                        )
-                    )
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
-                    )
-                )
-            }
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = subtextColor,
-                    lineHeight = 20.sp,
-                    fontSize = 13.5.sp
-                ),
-                modifier = Modifier.padding(start = 34.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun ArrowBackIcon(modifier: Modifier = Modifier, color: Color) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val path = Path().apply {
-            moveTo(w * 0.58f, h * 0.22f)
-            lineTo(w * 0.28f, h * 0.5f)
-            lineTo(w * 0.58f, h * 0.78f)
-        }
-        drawPath(
-            path = path,
-            color = color,
-            style = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-        )
-        drawLine(
-            color = color,
-            start = Offset(w * 0.28f, h * 0.5f),
-            end = Offset(w * 0.78f, h * 0.5f),
-            strokeWidth = 2.4.dp.toPx(),
-            cap = StrokeCap.Round
-        )
-    }
-}
-
-@Composable
-fun LegalPolicyIcon(modifier: Modifier = Modifier, color: Color) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        // Draw document page
-        val path = Path().apply {
-            moveTo(w * 0.2f, h * 0.1f)
-            lineTo(w * 0.65f, h * 0.1f)
-            lineTo(w * 0.85f, h * 0.3f)
-            lineTo(w * 0.85f, h * 0.9f)
-            lineTo(w * 0.2f, h * 0.9f)
-            close()
-        }
-        drawPath(path = path, color = color, style = Stroke(width = 2.dp.toPx()))
-        // Page corner fold
-        drawLine(
-            color = color,
-            start = Offset(w * 0.65f, h * 0.1f),
-            end = Offset(w * 0.65f, h * 0.3f),
-            strokeWidth = 2.dp.toPx()
-        )
-        drawLine(
-            color = color,
-            start = Offset(w * 0.65f, h * 0.3f),
-            end = Offset(w * 0.85f, h * 0.3f),
-            strokeWidth = 2.dp.toPx()
-        )
-        // Document lines
-        drawLine(
-            color = color,
-            start = Offset(w * 0.32f, h * 0.45f),
-            end = Offset(w * 0.72f, h * 0.45f),
-            strokeWidth = 1.8.dp.toPx(),
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = color,
-            start = Offset(w * 0.32f, h * 0.60f),
-            end = Offset(w * 0.72f, h * 0.60f),
-            strokeWidth = 1.8.dp.toPx(),
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = color,
-            start = Offset(w * 0.32f, h * 0.75f),
-            end = Offset(w * 0.55f, h * 0.75f),
-            strokeWidth = 1.8.dp.toPx(),
-            cap = StrokeCap.Round
-        )
     }
 }
 

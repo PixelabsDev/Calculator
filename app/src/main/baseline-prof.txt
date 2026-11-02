@@ -1,0 +1,9 @@
+Lcom/example/MainActivity;
+Lcom/example/calculator/CalculatorViewModel;
+Lcom/example/calculator/ExpressionParser;
+Lcom/example/data/AppDatabase;
+Lcom/example/data/HistoryRepository;
+Lcom/example/data/HistoryDao;
+Lcom/example/data/HistoryEntry;
+Lcom/example/report/ReportManager;
+Lcom/example/ui/theme/ThemeKt;

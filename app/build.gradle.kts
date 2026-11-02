@@ -93,7 +93,20 @@ android {
     compose = true
     buildConfig = true
   }
+  packaging {
+    jniLibs {
+      useLegacyPackaging = false
+    }
+    resources {
+      excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+  }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+}
+
+tasks.withType<AbstractArchiveTask>().configureEach {
+  isPreserveFileTimestamps = false
+  isReproducibleFileOrder = true
 }
 
 tasks.register("testReleaseUnitTest") {

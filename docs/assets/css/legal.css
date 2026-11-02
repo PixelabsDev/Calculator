@@ -65,13 +65,15 @@ body {
 
 /* Global Link Rules - Never Browser-Default Purple/Indigo */
 a,
+a:link,
 a:visited {
   color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }
 
-a:hover {
+a:hover,
+a:focus {
   color: var(--accent-hover);
   text-decoration: underline;
 }
@@ -125,6 +127,7 @@ a:hover {
 }
 
 .header-nav a,
+.header-nav a:link,
 .header-nav a:visited {
   color: var(--text-secondary);
   font-weight: 500;
@@ -328,6 +331,7 @@ li {
 }
 
 .service-links a,
+.service-links a:link,
 .service-links a:visited {
   color: var(--accent);
   text-decoration: none;
@@ -400,6 +404,7 @@ footer {
 }
 
 .footer-links a,
+.footer-links a:link,
 .footer-links a:visited {
   color: var(--text-secondary);
   text-decoration: none;

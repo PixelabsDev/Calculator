@@ -1,0 +1,10 @@
+Pixelabs Calculator is an ultra-fast, privacy-first scientific calculator designed for Android using Jetpack Compose and Material You design principles.
+
+Key Features:
+• 100% Offline Core: All mathematical evaluations, trigonometry, and scientific expressions execute locally on your device CPU. No internet connection is ever required for calculations.
+• Zero Telemetry: Completely free of analytics SDKs, advertising trackers, background profiling, or identifier harvesting.
+• Scientific Keypad: Comprehensive mathematical support including trigonometry (sin, cos, tan), inverse functions (asin, acos, atan), logarithms (ln, log), square roots, exponents, factorials, and constants (π, e).
+• Angle Unit Toggle: Effortlessly switch between Degrees (DEG) and Radians (RAD) with instantaneous trigonometric recalibration.
+• Calculation History: Sandboxed, local on-device calculation history powered by Android Room SQLite. History can be reviewed, reused, or cleared instantly.
+• Material You Adaptive UI: Seamless support for dynamic color theming, dedicated Dark Mode, and responsive portrait and landscape layouts.
+• FOSS & Open Source: Licensed under the MIT License with public source code inspection and reproducible builds.
