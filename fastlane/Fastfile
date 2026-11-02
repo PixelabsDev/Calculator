@@ -23,8 +23,8 @@ platform :android do
       metadata_path: "fastlane/metadata/android",
       skip_upload_apk: true,
       skip_upload_aab: true,
-      skip_upload_changelogs: options[:skip_changelogs] || false,
-      skip_upload_images: options[:skip_images] || false,
+      skip_upload_changelogs: options[:skip_changelogs].nil? ? true : options[:skip_changelogs],
+      skip_upload_images: options[:skip_images].nil? ? true : options[:skip_images],
       skip_upload_screenshots: options[:skip_screenshots] || false,
       validate_only: options[:validate_only] || false
     )
