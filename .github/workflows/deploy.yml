@@ -290,6 +290,9 @@ jobs:
       - name: Locate Mapping & Debug Symbols
         id: symbols-locator
         run: |
+          # Package standalone native debug symbols and inject into AAB
+          python3 scripts/bundle_debug_symbols.py
+
           # 1. Proguard / R8 Deobfuscation Mapping
           MAP_FILE="app/build/outputs/mapping/release/mapping.txt"
           if [ -f "$MAP_FILE" ]; then
@@ -317,17 +320,8 @@ jobs:
               echo "symbols_path=$FOUND_SYM" >> $GITHUB_OUTPUT
               echo "Found native debug symbols archive: $FOUND_SYM"
             else
-              # Package from merged native libs directory if present
-              LIB_DIR="app/build/intermediates/merged_native_libs/release/out/lib"
-              if [ -d "$LIB_DIR" ]; then
-                mkdir -p app/build/outputs/native-debug-symbols/release
-                (cd "$LIB_DIR" && zip -r "${{ github.workspace }}/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip" .)
-                echo "symbols_path=app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip" >> $GITHUB_OUTPUT
-                echo "Packaged native debug symbols archive from $LIB_DIR"
-              else
-                echo "symbols_path=" >> $GITHUB_OUTPUT
-                echo "No native debug symbols found."
-              fi
+              echo "symbols_path=" >> $GITHUB_OUTPUT
+              echo "No native debug symbols found."
             fi
           fi
 

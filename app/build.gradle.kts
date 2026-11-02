@@ -114,6 +114,17 @@ tasks.register("testReleaseUnitTest") {
   dependsOn("test")
 }
 
+tasks.register<Exec>("bundleReleaseDebugSymbols") {
+  description = "Packages native debug symbols into native-debug-symbols.zip and embeds them into release AAB metadata"
+  group = "bundle"
+  workingDir = rootDir
+  commandLine = listOf("python3", "${rootDir}/scripts/bundle_debug_symbols.py")
+}
+
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+  finalizedBy("bundleReleaseDebugSymbols")
+}
+
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
 secrets {
