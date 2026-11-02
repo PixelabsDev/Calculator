@@ -22,9 +22,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,6 +56,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,6 +78,7 @@ fun ReportIssueDialog(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf<String?>(null) }
     var includeDiagnostics by remember { mutableStateOf(false) }
     var userConsentAgreed by remember { mutableStateOf(false) }
 
@@ -318,18 +323,56 @@ fun ReportIssueDialog(
                         )
                     )
 
-                    // Optional User Email Input (Never pre-filled with dummy data)
+                    // Optional User Email Input with client-side validation
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { email = it },
+                        onValueChange = { input ->
+                            email = input
+                            if (emailError != null) {
+                                emailError = if (input.isNotBlank() && !EmailValidator.isValid(input)) {
+                                    "Please enter a valid email address (e.g. name@domain.com)"
+                                } else {
+                                    null
+                                }
+                            }
+                        },
                         label = { Text("Your Email (optional, for follow-up)") },
-                        placeholder = { Text("you@example.com") },
+                        placeholder = { Text("you@domain.com") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        isError = emailError != null,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Done
+                        ),
+                        supportingText = {
+                            if (emailError != null) {
+                                Text(
+                                    text = emailError ?: "",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                    modifier = Modifier.testTag("report_email_error")
+                                )
+                            }
+                        },
+                        trailingIcon = {
+                            if (emailError != null) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Invalid email format",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("report_email_input"),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = accentColor,
-                            unfocusedBorderColor = inputBorder
+                            unfocusedBorderColor = inputBorder,
+                            errorBorderColor = MaterialTheme.colorScheme.error,
+                            errorLabelColor = MaterialTheme.colorScheme.error,
+                            errorTrailingIconColor = MaterialTheme.colorScheme.error
                         )
                     )
 
@@ -433,14 +476,19 @@ fun ReportIssueDialog(
                     // Primary Action: Submit Feedback (Disabled until user explicitly grants consent)
                     Button(
                         onClick = {
+                            val trimmedEmail = email.trim()
                             if (description.isBlank()) {
                                 Toast.makeText(context, "Please enter some details first", Toast.LENGTH_SHORT).show()
+                            } else if (trimmedEmail.isNotEmpty() && !EmailValidator.isValid(trimmedEmail)) {
+                                emailError = "Please enter a valid email address (e.g. name@domain.com)"
+                                Toast.makeText(context, "Please enter a valid email address", Toast.LENGTH_SHORT).show()
                             } else {
+                                emailError = null
                                 viewModel.submitReportToSheet(
                                     category = selectedCategory,
                                     title = title.ifBlank { "User Feedback" },
                                     description = description,
-                                    email = email,
+                                    email = trimmedEmail,
                                     includeDiagnostics = includeDiagnostics
                                 )
                             }
@@ -478,17 +526,24 @@ fun ReportIssueDialog(
                     ) {
                         OutlinedButton(
                             onClick = {
-                                val intent = viewModel.createEmailIntent(
-                                    category = selectedCategory,
-                                    title = title.ifBlank { "User Feedback" },
-                                    description = description,
-                                    email = email,
-                                    includeDiagnostics = includeDiagnostics
-                                )
-                                try {
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
-                                    Toast.makeText(context, "No email client found. Use 'Copy' instead.", Toast.LENGTH_LONG).show()
+                                val trimmedEmail = email.trim()
+                                if (trimmedEmail.isNotEmpty() && !EmailValidator.isValid(trimmedEmail)) {
+                                    emailError = "Please enter a valid email address (e.g. name@domain.com)"
+                                    Toast.makeText(context, "Please enter a valid email address", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    emailError = null
+                                    val intent = viewModel.createEmailIntent(
+                                        category = selectedCategory,
+                                        title = title.ifBlank { "User Feedback" },
+                                        description = description,
+                                        email = trimmedEmail,
+                                        includeDiagnostics = includeDiagnostics
+                                    )
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {
+                                        Toast.makeText(context, "No email client found. Use 'Copy' instead.", Toast.LENGTH_LONG).show()
+                                    }
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -499,16 +554,23 @@ fun ReportIssueDialog(
 
                         OutlinedButton(
                             onClick = {
-                                val text = viewModel.getFormattedReportText(
-                                    category = selectedCategory,
-                                    title = title.ifBlank { "User Feedback" },
-                                    description = description.ifBlank { "(No details entered)" },
-                                    email = email,
-                                    includeDiagnostics = includeDiagnostics
-                                )
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("Calculator Feedback", text))
-                                Toast.makeText(context, "Feedback details copied!", Toast.LENGTH_SHORT).show()
+                                val trimmedEmail = email.trim()
+                                if (trimmedEmail.isNotEmpty() && !EmailValidator.isValid(trimmedEmail)) {
+                                    emailError = "Please enter a valid email address (e.g. name@domain.com)"
+                                    Toast.makeText(context, "Please enter a valid email address", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    emailError = null
+                                    val text = viewModel.getFormattedReportText(
+                                        category = selectedCategory,
+                                        title = title.ifBlank { "User Feedback" },
+                                        description = description.ifBlank { "(No details entered)" },
+                                        email = trimmedEmail,
+                                        includeDiagnostics = includeDiagnostics
+                                    )
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("Calculator Feedback", text))
+                                    Toast.makeText(context, "Feedback details copied!", Toast.LENGTH_SHORT).show()
+                                }
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp)

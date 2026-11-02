@@ -11,12 +11,14 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.example.calculator.CalculatorViewModel
+import com.example.report.EmailValidator
 import com.example.report.ReportSubmitState
 import com.example.ui.theme.MyApplicationTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -221,5 +223,37 @@ class CalculatorUiTest {
         )
         assertNotNull(emailIntent)
         assertEquals(android.content.Intent.ACTION_SENDTO, emailIntent.action)
+    }
+
+    @Test
+    fun testFeedbackEmailValidation() {
+        // 1. Valid custom domain emails are accepted across diverse providers
+        assertTrue(EmailValidator.isValid("user@custom.xyz"))
+        assertTrue(EmailValidator.isValid("admin@pixelabs.in"))
+        assertTrue(EmailValidator.isValid("dev@company.org"))
+        assertTrue(EmailValidator.isValid("test.user+tag@domain.co.uk"))
+
+        // 2. Malformed emails and plain text are strictly rejected
+        assertFalse(EmailValidator.isValid("plain-text-no-at"))
+        assertFalse(EmailValidator.isValid("missing-tld@domain"))
+        assertFalse(EmailValidator.isValid("user@.com"))
+        assertFalse(EmailValidator.isValid("@domain.com"))
+        assertFalse(EmailValidator.isValid("user@domain."))
+
+        // 3. Optional field allows blank and whitespace
+        assertTrue(EmailValidator.isValid(""))
+        assertTrue(EmailValidator.isValid(null))
+        assertTrue(EmailValidator.isValid("   "))
+
+        // 4. Verify ViewModel email intent generation with valid custom domain email
+        val intent = viewModel.createEmailIntent(
+            category = "Feedback",
+            title = "Validation Test",
+            description = "Valid email test",
+            email = "tester@custom.xyz",
+            includeDiagnostics = false
+        )
+        assertNotNull(intent)
+        assertEquals(android.content.Intent.ACTION_SENDTO, intent.action)
     }
 }
