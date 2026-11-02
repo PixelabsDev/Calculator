@@ -5,6 +5,7 @@
   --surface: #ffffff;
   --border: #dadce0;
   --border-subtle: #ebebeb;
+  --divider: rgba(0, 0, 0, 0.06);
   --text: #202124;
   --text-muted: #3c4043;
   --text-subtle: #5f6368;
@@ -20,6 +21,7 @@
   --surface: #1f1f1f;
   --border: #3c4043;
   --border-subtle: #2d2d2d;
+  --divider: rgba(255, 255, 255, 0.08);
   --text: #e8eaed;
   --text-muted: #bdc1c6;
   --text-subtle: #9aa0a6;
@@ -36,6 +38,7 @@
     --surface: #1f1f1f;
     --border: #3c4043;
     --border-subtle: #2d2d2d;
+    --divider: rgba(255, 255, 255, 0.08);
     --text: #e8eaed;
     --text-muted: #bdc1c6;
     --text-subtle: #9aa0a6;
@@ -275,36 +278,69 @@ li {
 .service-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
   margin: 32px 0;
 }
 
 .service-item {
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 32px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .service-item:last-child {
   border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
 }
 
 .service-name {
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin-bottom: 6px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 8px;
   color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.service-name a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.service-name a:hover {
+  color: var(--link);
+  text-decoration: underline;
 }
 
 .service-desc {
   font-size: 0.95rem;
   color: var(--text-subtle);
-  margin-bottom: 10px;
+  line-height: 1.6;
+  margin-bottom: 12px;
 }
 
 .service-links {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 0.9rem;
+}
+
+.service-links a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.service-links a:hover {
+  text-decoration: underline;
+}
+
+.service-links .dot {
+  color: var(--text-subtle);
+  opacity: 0.5;
+  user-select: none;
+  font-size: 0.85rem;
+  padding: 0 2px;
 }
 
 /* Code Block */
