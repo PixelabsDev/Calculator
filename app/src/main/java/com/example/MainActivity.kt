@@ -143,8 +143,8 @@ val LocalButtonAspectRatio = compositionLocalOf { 1f }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
         setContent {
             val viewModel: CalculatorViewModel = viewModel()
             val isScreenshotBlocked by viewModel.isScreenshotBlocked.collectAsState()
@@ -228,18 +228,17 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        contentWindowInsets = WindowInsets.safeDrawing
     ) { padding ->
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(appBgColor)
-            .padding(padding)
     ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(padding)
             ) {
                 val vibrate = rememberVibrator()
 
