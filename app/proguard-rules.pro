@@ -62,7 +62,6 @@
 -repackageclasses ''
 
 # 9. Android 15 Edge-to-Edge Compliance & Play Console Verification
-# Preserve explicit EdgeToEdge entry points and prevent inlining of legacy fallbacks into Activity
+# Preserve explicit EdgeToEdge entry points
 -keep class androidx.activity.EdgeToEdge** { *; }
 -keepclassmembers class androidx.activity.EdgeToEdge** { *; }
--dontinline class androidx.activity.EdgeToEdge** { *; }
