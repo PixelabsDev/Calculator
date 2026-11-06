@@ -67,9 +67,12 @@ Calculator-
 │   └── src/test/                         # Comprehensive unit & Robolectric test suite
 ├── scripts/
 │   ├── compute-version.py               # Monotonic SemVer calculation engine
-│   └── generate-changelog.py            # Automated Conventional Commit changelog
+│   ├── generate-changelog.py            # Automated Conventional Commit changelog
+│   └── bundle_debug_symbols.py          # Native debug symbols & mapping packager
 └── .github/workflows/
-    └── deploy.yml                       # Production-grade Release CI/CD workflow
+    ├── deploy.yml                       # Production-grade Release CI/CD workflow
+    ├── build-test-apk.yml               # Continuous Integration Debug Build & Test
+    └── sync-store-assets.yml            # Fastlane Play Store Assets & Metadata Sync
 ```
 
 | Layer | Technology |
@@ -89,29 +92,79 @@ Calculator-
 This repository features a **zero-touch, production-grade automated release pipeline** configured via GitHub Actions ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)):
 
 ```mermaid
-flowchart LR
-    A["Push to main"] --> B["Quality Gate\n(Unit Tests + Lint)"]
-    B --> C["Security Audit\n(Trivy CVE Scan)"]
-    C --> D["Dynamic SemVer\n(Git Rev-List + Conventional Commits)"]
-    D --> E["Deterministic Build\n(Signed AAB & Universal APK)"]
-    E --> F["Size Watchdog\n(< 5 MB Limit)"]
-    F --> G["Google Play Console\n(Internal Testing Track)"]
-    F --> H["GitHub Release\n(Release Notes + Artifacts)"]
+flowchart TD
+    subgraph Trigger["1. Trigger & Versioning Engine"]
+        A["Push to main / Workflow Dispatch"]
+        B["Dynamic SemVer & Automated Changelog (scripts/compute-version.py)"]
+        A --> B
+    end
+
+    subgraph QualityGates["2. Automated Quality & Security Gates"]
+        C1["Gate 1: Unit, Persistence & Robolectric UI Tests (./gradlew testReleaseUnitTest)"]
+        C2["Gate 2: Static Code Analysis & Android Lint (./gradlew lintRelease)"]
+        C3["Gate 3: Trivy Dependency CVE Vulnerability Audit"]
+        C4["Gate 4: Gitleaks Secret & Credential Detection"]
+        B --> C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph BuildEngine["3. Deterministic Build & Binary Verification"]
+        D1["Isolated Ephemeral Keystore Injection"]
+        D2["Assemble Release AAB with R8 Obfuscation & Native Symbols"]
+        D3["Bundletool Universal Sideload APK Generation"]
+        D4["Gate 5: Post-Build AAB Size Watchdog (< 10 MB)"]
+        D5["Gate 6: Binary Permission & apksigner Signature Audit"]
+        D6["Cryptographic Keystore Shredding (shred -u -z)"]
+        C4 --> D1 --> D2 --> D3 --> D4 --> D5 --> D6
+    end
+
+    subgraph ComplianceSymbols["4. Artifacts, Symbols & Attestation"]
+        E1["Package Native Debug Symbols & mapping.txt"]
+        E2["Generate Dependency Software Bill of Materials (SBOM)"]
+        E3["SLSA Cryptographic Build Provenance Attestation"]
+        D6 --> E1 --> E2 --> E3
+    end
+
+    subgraph Distribution["5. Automated Zero-Touch Distribution"]
+        F1["GitHub Release & Git Tag (AAB, Universal APK, Symbols, Mapping, SBOM)"]
+        F2["Google Play Console Deployment (Internal / Alpha / Beta / Production Tracks)"]
+        E3 --> F1
+        E3 --> F2
+    end
 ```
 
-### Pipeline Quality Gates
-1. **Automated Dynamic Versioning**:
-   - `versionCode` is monotonically computed from git history: `git rev-list --count HEAD`.
-   - `versionName` follows Semantic Versioning (`MAJOR.MINOR.PATCH`) deduced from commit conventions (`feat` $\to$ minor, `fix` $\to$ patch, `BREAKING CHANGE` $\to$ major).
-2. **Strict Quality Gates**:
-   - Compiles and runs `./gradlew testReleaseUnitTest` with fail-fast execution.
-   - Executes `./gradlew lintRelease` to prevent fatal lint issues.
-   - Runs Trivy vulnerability scanner to flag dependency CVEs.
-   - AAB Size Watchdog validates bundle footprint (< 5 MB threshold).
-3. **Automated Distribution**:
-   - Bundles and signs release with Google Play upload key.
-   - Automatically publishes the release to the **Google Play Console Internal Testing track**.
-   - Generates a GitHub Release with compiled Universal APK and Android App Bundle (`.aab`).
+### Pipeline Architecture & Quality Gates
+
+The production pipeline enforces an enterprise fail-fast architecture across 14 dedicated steps and 6 strict quality gates:
+
+1. **Automated Dynamic Versioning & Changelog**:
+   - `versionCode` is monotonically computed from git history and existing release tags (`git tag -l "v*"`).
+   - `versionName` dynamically follows Semantic Versioning (`MAJOR.MINOR.PATCH`) deduced from Conventional Commits (`feat` $\to$ minor, `fix` $\to$ patch, `BREAKING CHANGE` $\to$ major).
+   - Generates release notes and Google Play `whatsnew` distribution files automatically.
+
+2. **Strict Multi-Layer Quality & Security Gates**:
+   - **Quality Gate 1 (Unit, Persistence & UI Tests)**: Executes JVM-based Robolectric UI tests, calculation fuzz testing, Room persistence verification, and mathematical parser test suites (`./gradlew testReleaseUnitTest`).
+   - **Quality Gate 2 (Android Lint)**: Enforces code quality, API compliance, and resource integrity (`./gradlew lintRelease`).
+   - **Quality Gate 3 (Trivy CVE Audit)**: Scans filesystem and dependencies for critical/high Common Vulnerabilities and Exposures (CVEs).
+   - **Quality Gate 4 (Gitleaks Secret Scan)**: Scans repository commits to detect and block accidental API keys, tokens, or private secrets.
+   - **Quality Gate 5 (AAB Size Watchdog)**: Verifies that the compiled Android App Bundle does not exceed the strict 10 MB budget.
+   - **Quality Gate 6 (Binary Permission & Signature Audit)**: Uses `apkanalyzer` to verify zero forbidden invasive permissions (`CAMERA`, `LOCATION`, `AD_ID`), and validates APK signature integrity with `apksigner`.
+
+3. **Production Hardening & Artifact Packaging**:
+   - **R8 / ProGuard Optimization**: Code shrinking, resource shrinking, and dead code stripping enabled for optimized release footprint.
+   - **Debug Symbols & Deobfuscation**: Packages R8 `mapping.txt` and native debug symbols (`ndk.debugSymbolLevel = FULL`) for Google Play crash and ANR diagnostics.
+   - **Bundletool Universal APK**: Generates a standalone universal sideload APK for testing across all Android device architectures (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`).
+   - **Software Bill of Materials (SBOM)**: Produces runtime dependency documentation for supply chain transparency.
+   - **Ephemeral Keystore Shredding**: Injected signing keystore is permanently overwritten and shredded (`shred -u -z`) from runner memory and disk immediately post-build.
+   - **SLSA Provenance**: Cryptographically signs and attests build provenance for tamper-proof software supply chain security.
+
+4. **Automated Dual Distribution**:
+   - **GitHub Releases**: Automatically tags the commit and publishes the release with `.aab`, universal `.apk`, `mapping.txt`, `native-debug-symbols.zip`, and `dependencies-sbom.txt`.
+   - **Google Play Console**: Deploys signed AAB with deobfuscation mapping and debug symbols directly to the target release track (`internal`, `alpha`, `beta`, or `production`).
+
+### Supporting Workflows
+
+- [`.github/workflows/build-test-apk.yml`](.github/workflows/build-test-apk.yml): Continuous integration pipeline that compiles and tests debug APKs on pushes and pull requests.
+- [`.github/workflows/sync-store-assets.yml`](.github/workflows/sync-store-assets.yml): On-demand Fastlane workflow that captures Compose UI test screenshots across phone and tablet form factors and synchronizes visual assets and metadata to the Google Play Store.
 
 ---
 
