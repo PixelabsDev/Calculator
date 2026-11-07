@@ -38,7 +38,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     val isCheckingIntegrity: StateFlow<Boolean> = _isCheckingIntegrity.asStateFlow()
 
     private val _isScreenshotBlocked = MutableStateFlow(
-        prefs.getBoolean("screenshot_blocked", true)
+        prefs.getBoolean("screenshot_blocked", false)
     )
     val isScreenshotBlocked: StateFlow<Boolean> = _isScreenshotBlocked.asStateFlow()
 

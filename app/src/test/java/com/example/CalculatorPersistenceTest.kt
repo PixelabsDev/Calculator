@@ -130,6 +130,14 @@ class CalculatorPersistenceTest {
     }
 
     @Test
+    fun testScreenshotBlockedDefaultsToFalse() {
+        val prefs = context.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
+        prefs.edit().remove("screenshot_blocked").commit()
+        val viewModel = CalculatorViewModel(context as android.app.Application)
+        assertFalse("Screenshot block must default to OFF (false)", viewModel.isScreenshotBlocked.value)
+    }
+
+    @Test
     fun testDatabaseBuilderHasDestructiveMigrationFallback() {
         val dbInstance = AppDatabase.getDatabase(context)
         assertNotNull(dbInstance)
