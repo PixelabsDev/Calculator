@@ -122,21 +122,40 @@ class CalculatorPersistenceTest {
         prefs.edit()
             .putString("theme_mode", "DARK")
             .putBoolean("rad_mode", true)
-            .putBoolean("screenshot_blocked", true)
+            .putBoolean(CalculatorViewModel.PREF_KEY_BLOCK_SCREENSHOTS, true)
             .apply()
 
         // Read and assert
         assertEquals("DARK", prefs.getString("theme_mode", null))
         assertTrue(prefs.getBoolean("rad_mode", false))
-        assertTrue(prefs.getBoolean("screenshot_blocked", false))
+        assertTrue(prefs.getBoolean(CalculatorViewModel.PREF_KEY_BLOCK_SCREENSHOTS, false))
     }
 
     @Test
     fun testScreenshotBlockedDefaultsToFalse() {
         val prefs = context.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
-        prefs.edit().remove("screenshot_blocked").commit()
+        prefs.edit().remove(CalculatorViewModel.PREF_KEY_BLOCK_SCREENSHOTS).remove("screenshot_blocked").commit()
         val viewModel = CalculatorViewModel(context as android.app.Application)
         assertFalse("Screenshot block must default to OFF (false)", viewModel.isScreenshotBlocked.value)
+    }
+
+    @Test
+    fun testExistingUserUpgradeMigratesToScreenshotBlockOff() {
+        val prefs = context.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
+        // Simulate existing user who updated from old version with legacy screenshot_blocked=true
+        prefs.edit()
+            .putBoolean("screenshot_blocked", true)
+            .remove(CalculatorViewModel.PREF_KEY_BLOCK_SCREENSHOTS)
+            .commit()
+
+        val viewModel = CalculatorViewModel(context as android.app.Application)
+        assertFalse("Upgraded existing user must default to OFF (false)", viewModel.isScreenshotBlocked.value)
+        assertFalse("Legacy preference key must be purged", prefs.contains("screenshot_blocked"))
+
+        // Explicit toggle ON by user saves under new key
+        viewModel.toggleScreenshotBlock()
+        assertTrue("Explicit toggle turns ON", viewModel.isScreenshotBlocked.value)
+        assertTrue("New preference key saved as true", prefs.getBoolean(CalculatorViewModel.PREF_KEY_BLOCK_SCREENSHOTS, false))
     }
 
     @Test

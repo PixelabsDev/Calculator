@@ -27,6 +27,11 @@ import kotlin.math.abs
 
 class CalculatorViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        const val PREF_KEY_BLOCK_SCREENSHOTS = "block_screenshots_v2"
+        private const val LEGACY_PREF_KEY_BLOCK_SCREENSHOTS = "screenshot_blocked"
+    }
+
     private val prefs = application.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
     private val repository: HistoryRepository
     private val integrityChecker = DeviceIntegrityChecker(application)
@@ -38,14 +43,14 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     val isCheckingIntegrity: StateFlow<Boolean> = _isCheckingIntegrity.asStateFlow()
 
     private val _isScreenshotBlocked = MutableStateFlow(
-        prefs.getBoolean("screenshot_blocked", false)
+        prefs.getBoolean(PREF_KEY_BLOCK_SCREENSHOTS, false)
     )
     val isScreenshotBlocked: StateFlow<Boolean> = _isScreenshotBlocked.asStateFlow()
 
     fun toggleScreenshotBlock() {
         val newVal = !_isScreenshotBlocked.value
         _isScreenshotBlocked.value = newVal
-        prefs.edit().putBoolean("screenshot_blocked", newVal).apply()
+        prefs.edit().putBoolean(PREF_KEY_BLOCK_SCREENSHOTS, newVal).apply()
     }
 
     val reportManager = ReportManager(application)
@@ -110,6 +115,11 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     init {
         val database = AppDatabase.getDatabase(application)
         repository = HistoryRepository(database.historyDao())
+
+        // Purge deprecated legacy preference key from previous versions so existing devices default to OFF
+        if (prefs.contains(LEGACY_PREF_KEY_BLOCK_SCREENSHOTS)) {
+            prefs.edit().remove(LEGACY_PREF_KEY_BLOCK_SCREENSHOTS).apply()
+        }
         
         // Initial silent security and integrity check
         checkDeviceIntegrity()
