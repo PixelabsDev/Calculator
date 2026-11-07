@@ -3,6 +3,7 @@ package com.example
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.example.calculator.CalculatorViewModel
 import com.example.data.AppDatabase
 import com.example.data.HistoryDao
 import com.example.data.HistoryEntry
