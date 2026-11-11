@@ -118,8 +118,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -633,6 +635,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     if (isPortrait) {
                         // Standard Portrait Calculator View with swipe-down-to-history gesture
                         var calcSwipeDownAccumulator by remember { mutableFloatStateOf(0f) }
+                        var collapsedKeypadHeightPx by remember(configuration.screenWidthDp) { mutableStateOf(0) }
+                        val density = LocalDensity.current
 
                         Column(
                             modifier = Modifier
@@ -816,10 +820,26 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .then(
+                                if (collapsedKeypadHeightPx > 0) {
+                                    Modifier.height(with(density) { collapsedKeypadHeightPx.toDp() })
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .onSizeChanged { size ->
+                                if (!isScientificExpanded && collapsedKeypadHeightPx == 0) {
+                                    collapsedKeypadHeightPx = size.height
+                                }
+                            }
                             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
                             .background(keypadBgColor)
                             .padding(start = 16.dp, end = 16.dp, top = keypadPaddingTop, bottom = keypadPaddingBottom),
-                        verticalArrangement = Arrangement.spacedBy(keypadSpacing)
+                        verticalArrangement = if (isScientificExpanded) {
+                            Arrangement.SpaceBetween
+                        } else {
+                            Arrangement.spacedBy(keypadSpacing)
+                        }
                     ) {
                         // Expanded scientific keypad with subtle entry/exit animations
                         AnimatedVisibility(
