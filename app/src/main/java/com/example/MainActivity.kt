@@ -826,13 +826,13 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             visible = isScientificExpanded,
                             enter = expandVertically(
                                 animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-                                expandFrom = Alignment.Top
+                                expandFrom = Alignment.Bottom
                             ) + fadeIn(
                                 animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
                             ),
                             exit = shrinkVertically(
                                 animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                                shrinkTowards = Alignment.Top
+                                shrinkTowards = Alignment.Bottom
                             ) + fadeOut(
                                 animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
                             )
