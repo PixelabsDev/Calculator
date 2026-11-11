@@ -71,21 +71,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -137,7 +126,6 @@ import kotlin.math.roundToInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.calculator.CalculatorViewModel
 import com.example.data.HistoryEntry
-import com.example.integrity.DeviceSecurityReport
 import com.example.report.ReportIssueDialog
 import com.example.ui.theme.MyApplicationTheme
 
@@ -185,13 +173,10 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
     val isInvMode by viewModel.isInvMode.collectAsState()
     val isScientificExpanded by viewModel.isScientificExpanded.collectAsState()
     val historyList by viewModel.historyState.collectAsState()
-    val securityReport by viewModel.deviceSecurityReport.collectAsState()
-    val isCheckingIntegrity by viewModel.isCheckingIntegrity.collectAsState()
     val isScreenshotBlocked by viewModel.isScreenshotBlocked.collectAsState()
 
     var showHistoryDrawer by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    var showIntegrityDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
@@ -292,7 +277,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             
                             DropdownMenu(
                                 expanded = showMenu,
-                                onDismissRequest = { showMenu = false }
+                                onDismissRequest = { showMenu = false },
+                                shape = RoundedCornerShape(28.dp)
                             ) {
                                 DropdownMenuItem(
                                     text = {
@@ -315,15 +301,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                         showMenu = false
                                     },
                                     modifier = Modifier.testTag("menu_privacy_terms")
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Device Integrity & Security") },
-                                    onClick = {
-                                        viewModel.checkDeviceIntegrity()
-                                        showIntegrityDialog = true
-                                        showMenu = false
-                                    },
-                                    modifier = Modifier.testTag("menu_device_integrity")
                                 )
                                 DropMenuItemScreenshotBlock(
                                     isScreenshotBlocked = isScreenshotBlocked,
@@ -351,20 +328,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     text = { Text(if (isRadMode) "Switch to Degrees" else "Switch to Radians") },
                                     onClick = {
                                         viewModel.toggleRadMode()
-                                        showMenu = false
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = {
-                                        val mStr = when (themeMode) {
-                                            com.example.calculator.ThemeMode.SYSTEM -> "Use System Theme"
-                                            com.example.calculator.ThemeMode.LIGHT -> "Force Light Theme"
-                                            com.example.calculator.ThemeMode.DARK -> "Force Dark Theme"
-                                        }
-                                        Text(mStr)
-                                    },
-                                    onClick = {
-                                        viewModel.toggleThemeMode()
                                         showMenu = false
                                     }
                                 )
@@ -787,8 +750,14 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                 val targetKeypadPaddingBottom = if (isScientificExpanded && isPortrait) 12.dp else 22.dp
                 val targetScientificSpacing = if (isScientificExpanded && isPortrait) 6.dp else 10.dp
 
-                val animSpecFloat = tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing)
-                val animSpecDp = tween<androidx.compose.ui.unit.Dp>(durationMillis = 260, easing = FastOutSlowInEasing)
+                val animSpecFloat = spring<Float>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+                val animSpecDp = spring<androidx.compose.ui.unit.Dp>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
 
                 val buttonAspectRatio by animateFloatAsState(
                     targetValue = targetAspectRatio,
@@ -845,16 +814,22 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         AnimatedVisibility(
                             visible = isScientificExpanded,
                             enter = expandVertically(
-                                animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
                                 expandFrom = Alignment.Top
                             ) + fadeIn(
-                                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                                animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing)
                             ),
                             exit = shrinkVertically(
-                                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
                                 shrinkTowards = Alignment.Top
                             ) + fadeOut(
-                                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                                animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing)
                             )
                         ) {
                             Column(
@@ -1198,16 +1173,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
 }
 }
 
-        if (showIntegrityDialog) {
-            DeviceIntegrityDialog(
-                viewModel = viewModel,
-                report = securityReport,
-                isChecking = isCheckingIntegrity,
-                onDismiss = { showIntegrityDialog = false },
-                isDark = isDark
-            )
-        }
-
         if (showReportDialog) {
             ReportIssueDialog(
                 viewModel = viewModel,
@@ -1430,7 +1395,10 @@ fun SystemModeIcon(modifier: Modifier = Modifier, color: Color) {
 fun ChevronIcon(isExpanded: Boolean, modifier: Modifier = Modifier, color: Color) {
     val rotation by animateFloatAsState(
         targetValue = if (isExpanded) 180f else 0f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
         label = "chevronRotation"
     )
     Canvas(
@@ -1715,211 +1683,6 @@ private fun LandscapeTextStyleForOutput(result: String) = when {
     result.length < 16 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium)
     result.length < 24 -> MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
     else -> MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium)
-}
-
-@Composable
-fun DeviceIntegrityDialog(
-    viewModel: CalculatorViewModel,
-    report: DeviceSecurityReport?,
-    isChecking: Boolean,
-    onDismiss: () -> Unit,
-    isDark: Boolean
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("dialog_device_integrity"),
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SecurityShieldIcon(modifier = Modifier.size(24.dp), color = if (report?.isDeviceCertified == true) Color(0xFF4CAF50) else Color(0xFFFFA000))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "Play Integrity & Device Security",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (isChecking) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                            Text(
-                                text = "Evaluating Play Integrity & Device Certification...",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                } else if (report != null) {
-                    // Status Badge Banner
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (report.isDeviceCertified) (if (isDark) Color(0xFF1B2E1E) else Color(0xFFE8F5E9)) else (if (isDark) Color(0xFF332A18) else Color(0xFFFFF8E1))
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CheckCircleBadgeIcon(
-                                    modifier = Modifier.size(18.dp),
-                                    color = if (report.isDeviceCertified) Color(0xFF4CAF50) else Color(0xFFFFA000)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (report.isDeviceCertified) "Google Play Certified Device" else "Device Verification Notice",
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (report.isDeviceCertified) (if (isDark) Color(0xFFA5D6A7) else Color(0xFF2E7D32)) else (if (isDark) Color(0xFFFFD54F) else Color(0xFFF57F17))
-                                    )
-                                )
-                            }
-                            Text(
-                                text = report.certificationSummary,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = if (report.isDeviceCertified) (if (isDark) Color(0xFFC8E6C9) else Color(0xFF388E3C)) else (if (isDark) Color(0xFFFFE082) else Color(0xFFE65100))
-                                )
-                            )
-                        }
-                    }
-
-                    // Diagnostic Details List
-                    IntegrityDetailRow("Google Play Services", "${report.playServicesStatus} (${report.playServicesVersion})", isDark)
-                    IntegrityDetailRow("Play Integrity Token", report.integrityTokenStatus, isDark)
-                    IntegrityDetailRow("Device Model", "${report.manufacturer} ${report.deviceModel}", isDark)
-                    IntegrityDetailRow("OS & SDK Version", "${report.androidVersion} (API ${report.apiLevel})", isDark)
-                    IntegrityDetailRow("Security Patch", report.securityPatch, isDark)
-                    IntegrityDetailRow("Build Signature", if (report.isReleaseKeys) "Official Release Keys" else report.buildTags, isDark)
-                    IntegrityDetailRow("Tampering / Root Status", if (report.isRootDetected) "Root Binary Detected" else "Clean (No Tampering)", isDark)
-                    IntegrityDetailRow("Last Verified", report.timestamp, isDark)
-                } else {
-                    Text(
-                        text = "Press verify below to evaluate Google Play Integrity and device certification.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { viewModel.checkDeviceIntegrity() },
-                enabled = !isChecking,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.testTag("btn_verify_integrity_again")
-            ) {
-                Text(if (isChecking) "Checking..." else "Re-verify")
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Close")
-            }
-        }
-    )
-}
-
-@Composable
-fun IntegrityDetailRow(label: String, value: String, isDark: Boolean) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isDark) Color(0xFF221F28) else Color(0xFFF3EFF6))
-            .padding(horizontal = 10.dp, vertical = 8.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                color = if (isDark) Color(0xFF9E9B9F) else Color(0xFF7D7A7F),
-                fontWeight = FontWeight.Medium
-            )
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = if (isDark) Color(0xFFE6E1E5) else Color(0xFF1C1B1F),
-                fontWeight = FontWeight.SemiBold
-            )
-        )
-    }
-}
-
-@Composable
-fun SecurityShieldIcon(modifier: Modifier = Modifier, color: Color) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        val path = Path().apply {
-            moveTo(w * 0.5f, h * 0.1f)
-            lineTo(w * 0.85f, h * 0.25f)
-            lineTo(w * 0.85f, h * 0.6f)
-            cubicTo(
-                w * 0.85f, h * 0.85f,
-                w * 0.5f, h * 0.95f,
-                w * 0.5f, h * 0.95f
-            )
-            cubicTo(
-                w * 0.5f, h * 0.95f,
-                w * 0.15f, h * 0.85f,
-                w * 0.15f, h * 0.6f
-            )
-            lineTo(w * 0.15f, h * 0.25f)
-            close()
-        }
-        drawPath(path = path, color = color, style = Stroke(width = 2.dp.toPx()))
-        // Inner checkmark in shield
-        val checkPath = Path().apply {
-            moveTo(w * 0.35f, h * 0.5f)
-            lineTo(w * 0.48f, h * 0.63f)
-            lineTo(w * 0.68f, h * 0.38f)
-        }
-        drawPath(path = checkPath, color = color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
-}
-
-@Composable
-fun CheckCircleBadgeIcon(modifier: Modifier = Modifier, color: Color) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawCircle(color = color, radius = w / 2.2f, center = Offset(w / 2f, h / 2f))
-        val check = Path().apply {
-            moveTo(w * 0.28f, h * 0.52f)
-            lineTo(w * 0.45f, h * 0.68f)
-            lineTo(w * 0.74f, h * 0.35f)
-        }
-        drawPath(
-            path = check,
-            color = Color.White,
-            style = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-        )
-    }
 }
 
 @Composable
