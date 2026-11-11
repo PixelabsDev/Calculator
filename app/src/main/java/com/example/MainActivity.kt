@@ -21,6 +21,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -193,7 +194,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
     // High-contrast refined palette (Light vs Dark adaptation)
     val displayBgColor = if (isDark) Color(0xFF0F0E14) else Color(0xFFFFFFFF)
     val appBgColor = if (isDark) Color(0xFF0F0E14) else Color(0xFFFFFFFF)
-    val keypadBgColor = if (isDark) Color(0xFF1B1824) else Color(0xFFEDE8F5)
+    val keypadBgColor = if (isDark) Color(0xFF14131A) else Color(0xFFFAF8FC)
 
     // Number keys coloring (0-9, .)
     val numberBtnBg = if (isDark) Color(0xFF2C2738) else Color(0xFFFFFFFF)
@@ -600,6 +601,12 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         var calcSwipeDownAccumulator by remember { mutableFloatStateOf(0f) }
                         var collapsedKeypadHeightPx by remember(configuration.screenWidthDp) { mutableStateOf(0) }
                         val density = LocalDensity.current
+                        val scientificVisibilityState = remember {
+                            MutableTransitionState(isScientificExpanded)
+                        }.apply {
+                            targetState = isScientificExpanded
+                        }
+                        val isKeypadCompact = isScientificExpanded || scientificVisibilityState.currentState
 
                         Column(
                             modifier = Modifier
@@ -744,11 +751,11 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         }
 
                 // 4. Keyboard Section: Responsive aspect ratio prevents scientific keypad from squishing the display
-                val targetAspectRatio = if (isScientificExpanded && isPortrait) 1.85f else 1.05f
-                val targetKeypadSpacing = if (isScientificExpanded && isPortrait) 6.dp else 12.dp
-                val targetKeypadPaddingTop = if (isScientificExpanded && isPortrait) 8.dp else 18.dp
-                val targetKeypadPaddingBottom = if (isScientificExpanded && isPortrait) 12.dp else 22.dp
-                val targetScientificSpacing = if (isScientificExpanded && isPortrait) 6.dp else 10.dp
+                val targetAspectRatio = if (isKeypadCompact && isPortrait) 1.85f else 1.05f
+                val targetKeypadSpacing = if (isKeypadCompact && isPortrait) 6.dp else 12.dp
+                val targetKeypadPaddingTop = if (isKeypadCompact && isPortrait) 8.dp else 18.dp
+                val targetKeypadPaddingBottom = if (isKeypadCompact && isPortrait) 12.dp else 22.dp
+                val targetScientificSpacing = if (isKeypadCompact && isPortrait) 6.dp else 10.dp
 
                 val animSpecFloat = spring<Float>(
                     dampingRatio = Spring.DampingRatioNoBouncy,
@@ -804,7 +811,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
                             .background(keypadBgColor)
                             .padding(start = 16.dp, end = 16.dp, top = keypadPaddingTop, bottom = keypadPaddingBottom),
-                        verticalArrangement = if (isScientificExpanded) {
+                        verticalArrangement = if (collapsedKeypadHeightPx > 0) {
                             Arrangement.SpaceBetween
                         } else {
                             Arrangement.spacedBy(keypadSpacing)
@@ -812,7 +819,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     ) {
                         // Expanded scientific keypad with subtle entry/exit animations
                         AnimatedVisibility(
-                            visible = isScientificExpanded,
+                            visibleState = scientificVisibilityState,
                             enter = expandVertically(
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
