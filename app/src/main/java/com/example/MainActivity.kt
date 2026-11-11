@@ -21,12 +21,14 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -601,12 +603,10 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         var calcSwipeDownAccumulator by remember { mutableFloatStateOf(0f) }
                         var collapsedKeypadHeightPx by remember(configuration.screenWidthDp) { mutableStateOf(0) }
                         val density = LocalDensity.current
-                        val scientificVisibilityState = remember {
-                            MutableTransitionState(isScientificExpanded)
-                        }.apply {
-                            targetState = isScientificExpanded
-                        }
-                        val isKeypadCompact = isScientificExpanded || scientificVisibilityState.currentState
+                        val keypadTransition = updateTransition(
+                            targetState = isScientificExpanded,
+                            label = "scientificKeypadTransition"
+                        )
 
                         Column(
                             modifier = Modifier
@@ -735,7 +735,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             ) {
                                 ChevronIcon(
                                     isExpanded = isScientificExpanded,
-                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68)
+                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68),
+                                    rotationDegrees = chevronRotation
                                 )
                             }
 
@@ -751,46 +752,60 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         }
 
                 // 4. Keyboard Section: Responsive aspect ratio prevents scientific keypad from squishing the display
-                val targetAspectRatio = if (isKeypadCompact && isPortrait) 1.85f else 1.05f
-                val targetKeypadSpacing = if (isKeypadCompact && isPortrait) 6.dp else 12.dp
-                val targetKeypadPaddingTop = if (isKeypadCompact && isPortrait) 8.dp else 18.dp
-                val targetKeypadPaddingBottom = if (isKeypadCompact && isPortrait) 12.dp else 22.dp
-                val targetScientificSpacing = if (isKeypadCompact && isPortrait) 6.dp else 10.dp
-
-                val animSpecFloat = spring<Float>(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-                val animSpecDp = spring<androidx.compose.ui.unit.Dp>(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-
-                val buttonAspectRatio by animateFloatAsState(
-                    targetValue = targetAspectRatio,
-                    animationSpec = animSpecFloat,
+                val buttonAspectRatio by keypadTransition.animateFloat(
+                    transitionSpec = {
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    },
                     label = "aspectRatioAnim"
-                )
-                val keypadSpacing by animateDpAsState(
-                    targetValue = targetKeypadSpacing,
-                    animationSpec = animSpecDp,
+                ) { expanded -> if (expanded && isPortrait) 1.85f else 1.05f }
+                val chevronRotation by keypadTransition.animateFloat(
+                    transitionSpec = {
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    },
+                    label = "chevronRotation"
+                ) { expanded -> if (expanded) 180f else 0f }
+                val keypadSpacing by keypadTransition.animateDp(
+                    transitionSpec = {
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    },
                     label = "keypadSpacingAnim"
-                )
-                val keypadPaddingTop by animateDpAsState(
-                    targetValue = targetKeypadPaddingTop,
-                    animationSpec = animSpecDp,
+                ) { expanded -> if (expanded && isPortrait) 6.dp else 12.dp }
+                val keypadPaddingTop by keypadTransition.animateDp(
+                    transitionSpec = {
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    },
                     label = "paddingTopAnim"
-                )
-                val keypadPaddingBottom by animateDpAsState(
-                    targetValue = targetKeypadPaddingBottom,
-                    animationSpec = animSpecDp,
+                ) { expanded -> if (expanded && isPortrait) 8.dp else 18.dp }
+                val keypadPaddingBottom by keypadTransition.animateDp(
+                    transitionSpec = {
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    },
                     label = "paddingBottomAnim"
-                )
-                val scientificSpacing by animateDpAsState(
-                    targetValue = targetScientificSpacing,
-                    animationSpec = animSpecDp,
+                ) { expanded -> if (expanded && isPortrait) 12.dp else 22.dp }
+                val scientificSpacing by keypadTransition.animateDp(
+                    transitionSpec = {
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    },
                     label = "scientificSpacingAnim"
-                )
+                ) { expanded -> if (expanded && isPortrait) 6.dp else 10.dp }
 
                 CompositionLocalProvider(LocalButtonAspectRatio provides buttonAspectRatio) {
                     Column(
@@ -819,24 +834,21 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     ) {
                         // Expanded scientific keypad with subtle entry/exit animations
                         AnimatedVisibility(
-                            visibleState = scientificVisibilityState,
+                            transition = keypadTransition,
+                            visible = { expanded -> expanded },
                             enter = expandVertically(
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
+                                    stiffness = Spring.StiffnessMedium
                                 ),
                                 expandFrom = Alignment.Top
-                            ) + fadeIn(
-                                animationSpec = tween(durationMillis = 200, easing = LinearOutSlowInEasing)
                             ),
                             exit = shrinkVertically(
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
+                                    stiffness = Spring.StiffnessMedium
                                 ),
                                 shrinkTowards = Alignment.Top
-                            ) + fadeOut(
-                                animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing)
                             )
                         ) {
                             Column(
@@ -1399,19 +1411,29 @@ fun SystemModeIcon(modifier: Modifier = Modifier, color: Color) {
 }
 
 @Composable
-fun ChevronIcon(isExpanded: Boolean, modifier: Modifier = Modifier, color: Color) {
-    val rotation by animateFloatAsState(
-        targetValue = if (isExpanded) 180f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "chevronRotation"
-    )
+fun ChevronIcon(
+    isExpanded: Boolean,
+    modifier: Modifier = Modifier,
+    color: Color,
+    rotationDegrees: Float? = null
+) {
+    val animatedRotation = if (rotationDegrees == null) {
+        val rotation by animateFloatAsState(
+            targetValue = if (isExpanded) 180f else 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "chevronRotation"
+        )
+        rotation
+    } else {
+        rotationDegrees
+    }
     Canvas(
         modifier = modifier
             .size(16.dp)
-            .graphicsLayer { rotationZ = rotation }
+            .graphicsLayer { rotationZ = animatedRotation }
     ) {
         val path = Path()
         val w = size.width
