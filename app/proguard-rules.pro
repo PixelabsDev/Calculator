@@ -42,10 +42,6 @@
 }
 -dontwarn androidx.compose.**
 
-# 6. Google Play Integrity & Services
--keep class com.google.android.play.core.integrity.** { *; }
--dontwarn com.google.android.play.core.**
-
 # 7. Zero-Logcat Production Privacy (Strip Log calls in release builds)
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);

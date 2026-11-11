@@ -7,8 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
 import com.example.data.HistoryEntry
 import com.example.data.HistoryRepository
-import com.example.integrity.DeviceIntegrityChecker
-import com.example.integrity.DeviceSecurityReport
 import com.example.report.ReportManager
 import com.example.report.ReportSubmitState
 import com.example.report.UserReport
@@ -34,14 +32,6 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
 
     private val prefs = application.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
     private val repository: HistoryRepository
-    private val integrityChecker = DeviceIntegrityChecker(application)
-
-    private val _deviceSecurityReport = MutableStateFlow<DeviceSecurityReport?>(null)
-    val deviceSecurityReport: StateFlow<DeviceSecurityReport?> = _deviceSecurityReport.asStateFlow()
-
-    private val _isCheckingIntegrity = MutableStateFlow(false)
-    val isCheckingIntegrity: StateFlow<Boolean> = _isCheckingIntegrity.asStateFlow()
-
     private val _isScreenshotBlocked = MutableStateFlow(
         prefs.getBoolean(PREF_KEY_BLOCK_SCREENSHOTS, false)
     )
@@ -121,8 +111,6 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             prefs.edit().remove(LEGACY_PREF_KEY_BLOCK_SCREENSHOTS).apply()
         }
         
-        // Initial silent security and integrity check
-        checkDeviceIntegrity()
     }
 
     // List of calculation histories
@@ -450,18 +438,6 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun isOperator(char: Char): Boolean {
         return char == '+' || char == '-' || char == '×' || char == '÷' || char == '^'
-    }
-
-    fun checkDeviceIntegrity() {
-        viewModelScope.launch {
-            _isCheckingIntegrity.value = true
-            try {
-                _deviceSecurityReport.value = integrityChecker.checkIntegrity()
-            } catch (_: Exception) {
-            } finally {
-                _isCheckingIntegrity.value = false
-            }
-        }
     }
 
     fun clearHistory() {
