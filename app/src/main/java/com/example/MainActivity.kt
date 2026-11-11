@@ -607,6 +607,15 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             targetState = isScientificExpanded,
                             label = "scientificKeypadTransition"
                         )
+                        val chevronRotation by keypadTransition.animateFloat(
+                            transitionSpec = {
+                                spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            },
+                            label = "chevronRotation"
+                        ) { expanded -> if (expanded) 180f else 0f }
 
                         Column(
                             modifier = Modifier
@@ -761,15 +770,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     },
                     label = "aspectRatioAnim"
                 ) { expanded -> if (expanded && isPortrait) 1.85f else 1.05f }
-                val chevronRotation by keypadTransition.animateFloat(
-                    transitionSpec = {
-                        spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
-                    },
-                    label = "chevronRotation"
-                ) { expanded -> if (expanded) 180f else 0f }
                 val keypadSpacing by keypadTransition.animateDp(
                     transitionSpec = {
                         spring(
@@ -834,8 +834,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                     ) {
                         // Expanded scientific keypad with subtle entry/exit animations
                         AnimatedVisibility(
-                            transition = keypadTransition,
-                            visible = { expanded -> expanded },
+                            visible = isScientificExpanded,
                             enter = expandVertically(
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
