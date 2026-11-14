@@ -1688,11 +1688,11 @@ fun LandscapeCalculatorLayout(
             .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Top ~34% Screen Height: Dedicated Slim Horizontal Display Panel with guaranteed headroom
+        // Top ~28% Screen Height: Dedicated Slim Horizontal Display Panel with guaranteed headroom
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.34f),
+                .weight(0.28f),
             shape = RoundedCornerShape(16.dp),
             color = displayBgColor
         ) {
@@ -1835,11 +1835,11 @@ fun LandscapeCalculatorLayout(
             }
         }
 
-        // Bottom ~66% Screen Height: Keypad Container (3 + 4 Architecture with Oval Keys)
+        // Bottom ~72% Screen Height: Keypad Container (4-Row Google Calculator Landscape Grid)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.66f),
+                .weight(0.72f),
             shape = RoundedCornerShape(16.dp),
             color = keypadBgColor
         ) {
@@ -1848,14 +1848,13 @@ fun LandscapeCalculatorLayout(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 8.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val btnShape = CircleShape
-                    val btnHeight = 38.dp
                     val sciFontSize = 13.sp
-                    val numFontSize = 16.sp
+                    val numFontSize = 18.sp
 
-                    // Left Side: 3 Columns Scientific Functions (Collapsible)
+                    // Left Side: 3 Columns Scientific Functions (Collapsible, 4 rows)
                     if (sciWeight > 0.05f) {
                         Column(
                             modifier = Modifier
@@ -1865,143 +1864,347 @@ fun LandscapeCalculatorLayout(
                                 .graphicsLayer {
                                     alpha = (sciWeight / 3f).coerceIn(0f, 1f)
                                 },
-                            verticalArrangement = Arrangement.SpaceEvenly
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Row 1: [DEG/RAD Toggle] [√] [π]
+                            // Row 1: [√] [Deg/Rad] [Inv]
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 KeypadButton(
-                                    label = if (isRadMode) "RAD" else "DEG",
+                                    label = "√",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.handleKeyPress("√") }
+
+                                KeypadButton(
+                                    label = if (isRadMode) "Rad" else "Deg",
                                     bgColor = if (isRadMode) activeSciBg else scientificBtnBg,
                                     txtColor = if (isRadMode) activeSciTxt else scientificBtnTxt,
-                                    modifier = Modifier.weight(1f).height(btnHeight),
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
                                     fontWeight = FontWeight.Bold,
                                     shape = btnShape,
                                     fontSize = sciFontSize
                                 ) { viewModel.toggleRadMode() }
 
-                                KeypadButton("√", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("√") }
-                                KeypadButton("π", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("π") }
-                            }
-
-                            // Row 2: [sin/sin⁻¹] [cos/cos⁻¹] [tan/tan⁻¹]
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                KeypadButton(if (isInvMode) "sin⁻¹" else "sin", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = 12.sp) { viewModel.handleKeyPress("sin") }
-                                KeypadButton(if (isInvMode) "cos⁻¹" else "cos", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = 12.sp) { viewModel.handleKeyPress("cos") }
-                                KeypadButton(if (isInvMode) "tan⁻¹" else "tan", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = 12.sp) { viewModel.handleKeyPress("tan") }
-                            }
-
-                            // Row 3: [ln] [log] [^]
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                KeypadButton("ln", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("ln") }
-                                KeypadButton("log", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("log") }
-                                KeypadButton("^", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("^") }
-                            }
-
-                            // Row 4: [e] [!] [Inv]
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                KeypadButton("e", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("e") }
-                                KeypadButton("!", scientificBtnBg, scientificBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("!") }
                                 KeypadButton(
                                     label = "Inv",
                                     bgColor = if (isInvMode) activeSciBg else scientificBtnBg,
                                     txtColor = if (isInvMode) activeSciTxt else scientificBtnTxt,
-                                    modifier = Modifier.weight(1f).height(btnHeight),
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
                                     fontWeight = FontWeight.Bold,
                                     shape = btnShape,
                                     fontSize = sciFontSize
                                 ) { viewModel.toggleInvMode() }
                             }
 
-                            // Row 5: [(] [)]
+                            // Row 2: [π] [sin/sin⁻¹] [e]
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                KeypadButton("(", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("(") }
-                                KeypadButton(")", scientificBtnBg, scientificBtnTxt, Modifier.weight(1.5f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress(")") }
+                                KeypadButton(
+                                    label = "π",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.handleKeyPress("π") }
+
+                                KeypadButton(
+                                    label = if (isInvMode) "sin⁻¹" else "sin",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = 12.sp
+                                ) { viewModel.handleKeyPress("sin") }
+
+                                KeypadButton(
+                                    label = "e",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.handleKeyPress("e") }
+                            }
+
+                            // Row 3: [^] [cos/cos⁻¹] [ln]
+                            Row(
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                KeypadButton(
+                                    label = "^",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.handleKeyPress("^") }
+
+                                KeypadButton(
+                                    label = if (isInvMode) "cos⁻¹" else "cos",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = 12.sp
+                                ) { viewModel.handleKeyPress("cos") }
+
+                                KeypadButton(
+                                    label = "ln",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.handleKeyPress("ln") }
+                            }
+
+                            // Row 4: [!] [tan/tan⁻¹] [log]
+                            Row(
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                KeypadButton(
+                                    label = "!",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.handleKeyPress("!") }
+
+                                KeypadButton(
+                                    label = if (isInvMode) "tan⁻¹" else "tan",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = 12.sp
+                                ) { viewModel.handleKeyPress("tan") }
+
+                                KeypadButton(
+                                    label = "log",
+                                    bgColor = scientificBtnBg,
+                                    txtColor = scientificBtnTxt,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    shape = btnShape,
+                                    fontSize = sciFontSize
+                                ) { viewModel.handleKeyPress("log") }
                             }
                         }
                     }
 
-                    // Right Side: 4 Columns Primary Numeric & Operator Keypad
+                    // Right Side: 5 Columns Primary Numeric & Operator Keypad (4 rows)
                     Column(
                         modifier = Modifier
-                            .weight(4f)
+                            .weight(5f)
                             .fillMaxHeight(),
-                        verticalArrangement = Arrangement.SpaceEvenly
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Row 1: [AC (2f)] [% (1f)] [÷ (1f)]
+                        // Row 1: [7] [8] [9] [AC] [×]
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            KeypadButton("AC", alertBg, alertTxt, Modifier.weight(2f).height(btnHeight), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("AC") }
-                            KeypadButton("%", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = sciFontSize) { viewModel.handleKeyPress("%") }
-                            KeypadButton("÷", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("÷") }
+                            KeypadButton(
+                                label = "7",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("7") }
+
+                            KeypadButton(
+                                label = "8",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("8") }
+
+                            KeypadButton(
+                                label = "9",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("9") }
+
+                            KeypadButton(
+                                label = "AC",
+                                bgColor = alertBg,
+                                txtColor = alertTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Bold,
+                                shape = btnShape,
+                                fontSize = 15.sp
+                            ) { viewModel.handleKeyPress("AC") }
+
+                            KeypadButton(
+                                label = "×",
+                                bgColor = operatorBtnBg,
+                                txtColor = operatorBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("×") }
                         }
 
-                        // Row 2: [7] [8] [9] [×]
+                        // Row 2: [4] [5] [6] [( )] [-]
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            KeypadButton("7", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("7") }
-                            KeypadButton("8", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("8") }
-                            KeypadButton("9", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("9") }
-                            KeypadButton("×", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("×") }
+                            KeypadButton(
+                                label = "4",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("4") }
+
+                            KeypadButton(
+                                label = "5",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("5") }
+
+                            KeypadButton(
+                                label = "6",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("6") }
+
+                            KeypadButton(
+                                label = "( )",
+                                bgColor = operatorBtnBg,
+                                txtColor = operatorBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = 14.sp
+                            ) { viewModel.handleKeyPress("( )") }
+
+                            KeypadButton(
+                                label = "-",
+                                bgColor = operatorBtnBg,
+                                txtColor = operatorBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("-") }
                         }
 
-                        // Row 3: [4] [5] [6] [-]
+                        // Row 3: [1] [2] [3] [%] [+]
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            KeypadButton("4", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("4") }
-                            KeypadButton("5", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("5") }
-                            KeypadButton("6", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("6") }
-                            KeypadButton("-", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("-") }
+                            KeypadButton(
+                                label = "1",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("1") }
+
+                            KeypadButton(
+                                label = "2",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("2") }
+
+                            KeypadButton(
+                                label = "3",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("3") }
+
+                            KeypadButton(
+                                label = "%",
+                                bgColor = operatorBtnBg,
+                                txtColor = operatorBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                shape = btnShape,
+                                fontSize = 16.sp
+                            ) { viewModel.handleKeyPress("%") }
+
+                            KeypadButton(
+                                label = "+",
+                                bgColor = operatorBtnBg,
+                                txtColor = operatorBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("+") }
                         }
 
-                        // Row 4: [1] [2] [3] [+]
+                        // Row 4: [0] [.] [⌫] [÷] [=]
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            KeypadButton("1", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("1") }
-                            KeypadButton("2", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("2") }
-                            KeypadButton("3", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("3") }
-                            KeypadButton("+", operatorBtnBg, operatorBtnTxt, Modifier.weight(1f).height(btnHeight), shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("+") }
-                        }
+                            KeypadButton(
+                                label = "0",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Medium,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("0") }
 
-                        // Row 5: [0] [.] [⌫] [=]
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            KeypadButton("0", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Medium, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress("0") }
-                            KeypadButton(".", numberBtnBg, numberBtnTxt, Modifier.weight(1f).height(btnHeight), fontWeight = FontWeight.Bold, shape = btnShape, fontSize = numFontSize) { viewModel.handleKeyPress(".") }
+                            KeypadButton(
+                                label = ".",
+                                bgColor = numberBtnBg,
+                                txtColor = numberBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                fontWeight = FontWeight.Bold,
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress(".") }
 
                             // Backspace interactive button
                             val backspaceInteraction = remember { MutableInteractionSource() }
@@ -2014,7 +2217,7 @@ fun LandscapeCalculatorLayout(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(btnHeight)
+                                    .fillMaxHeight()
                                     .graphicsLayer {
                                         scaleX = backspaceScale
                                         scaleY = backspaceScale
@@ -2035,15 +2238,23 @@ fun LandscapeCalculatorLayout(
                                 BackspaceIcon(color = operatorBtnTxt)
                             }
 
-                            // Equals button (aligned in numeric operator column under +)
+                            KeypadButton(
+                                label = "÷",
+                                bgColor = operatorBtnBg,
+                                txtColor = operatorBtnTxt,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                shape = btnShape,
+                                fontSize = numFontSize
+                            ) { viewModel.handleKeyPress("÷") }
+
                             KeypadButton(
                                 label = "=",
                                 bgColor = equalsBtnBg,
                                 txtColor = equalsBtnTxt,
-                                modifier = Modifier.weight(1f).height(btnHeight),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                                 fontWeight = FontWeight.Bold,
                                 shape = btnShape,
-                                fontSize = 20.sp
+                                fontSize = 22.sp
                             ) { viewModel.handleKeyPress("=") }
                         }
                     }
