@@ -102,7 +102,7 @@ class ReportManager(private val context: Context) {
                 Result.failure(Exception("Server returned status ($responseCode). Please try again or use Email."))
             }
         } catch (e: UnknownHostException) {
-            Result.failure(Exception("Unable to connect to Google service. Please check your internet connection or Private DNS, or use Email / Copy below."))
+            Result.failure(Exception("No internet connection. Please check your network and try again, or send via Email / Copy below."))
         } catch (e: SocketTimeoutException) {
             Result.failure(Exception("Connection timed out. Please check your network and try again, or use Email."))
         } catch (e: ConnectException) {
