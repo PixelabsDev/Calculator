@@ -16,11 +16,11 @@ android {
     targetSdk = 36
     val inputVersionCode = (project.findProperty("VERSION_CODE") as? String)?.toIntOrNull()
       ?: (System.getenv("VERSION_CODE")?.toIntOrNull())
-    versionCode = inputVersionCode ?: 19
+    versionCode = inputVersionCode ?: 190902
 
     val inputVersionName = (project.findProperty("VERSION_NAME") as? String)
       ?: System.getenv("VERSION_NAME")
-    versionName = inputVersionName ?: "19.0.0"
+    versionName = inputVersionName ?: "19.9.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -59,6 +59,11 @@ android {
     textOutput = file("stdout")
     explainIssues = false
     warningsAsErrors = false
+  }
+
+  dependenciesInfo {
+    includeInApk = false
+    includeInBundle = false
   }
 
   buildTypes {
