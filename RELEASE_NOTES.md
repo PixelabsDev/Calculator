@@ -1,3 +1,16 @@
+# Release v19.9.2 (Google Play Production Live)
+
+Pixelabs Calculator is officially live in **Production** on the Google Play Store (`com.aistudio.calculator.gtypxz`), published by **PixelabsDev** and rated for 3+.
+
+### 🌟 Key Highlights
+- **Google Play Production Live**: Publicly available on Google Play with automated release verification and SLSA build attestation.
+- **Enhanced Performance**: Real-device baseline profile generation and startup optimizations for sub-second app launch.
+- **Ergonomic Keypad & Layout Architecture**: Google Calculator-inspired 4-row landscape architecture (3+4 grid) and organic stadium oval buttons.
+- **Zero-Telemetry Offline Security**: 100% on-device mathematical parsing engine with local Room SQLite persistence.
+- **Transparent Feedback Pipeline**: Google Apps Script webhook integration with automated formatting, user opt-in consent, and 90-day auto-purge retention.
+
+---
+
 # Release v19.1.0
 
 Pixelabs Android Calculator Release with upgraded enterprise CI/CD pipeline, offline privacy enhancements, and UI polish.

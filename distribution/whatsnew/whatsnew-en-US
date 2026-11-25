@@ -1,6 +1,5 @@
-What's New in v19.1.0:
-• Polish feedback dialog header, button copy, consent checkbox, and layout overflow
-• Integrate direct Google Sheet webhook submission with email fallback
-• Eliminate display squish and preview overlap in scientific portrait mode
-• Implement two-way history swipe gestures, drag handle physics, and auto-scaling scientific number formatting
-• Fallback blank keystore secrets to defaults for dry-run verification
+What's New in v19.9.2:
+• Faster performance and smoother app startup
+• UI refinements, bug fixes, and stability improvements
+• Public production release on Google Play Store
+• 100% offline mathematical engine with zero telemetry

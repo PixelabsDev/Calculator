@@ -2,8 +2,9 @@
 
 <div align="center">
 
+[![Google Play](https://img.shields.io/badge/Google_Play-Production_Live-34A853?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.aistudio.calculator.gtypxz)
+[![F-Droid](https://img.shields.io/badge/F--Droid-Repository_Available-1976D2?style=for-the-badge&logo=fdroid&logoColor=white)](https://fdroid.pixelabs.in/)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/PixelabsDev/Calculator-/deploy.yml?branch=main&label=CI%2FCD%20Release&logo=githubactions&logoColor=white&style=for-the-badge)
-![Google Play Track](https://img.shields.io/badge/Google%20Play-Internal%20Testing-34A853?style=for-the-badge&logo=googleplay&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
 ![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline-00C853?style=for-the-badge&logo=shieldcheck&logoColor=white)
@@ -13,9 +14,30 @@
   <b>A modern, privacy-first, offline Android calculator crafted with Jetpack Compose, Material You design, and an enterprise zero-touch CI/CD release pipeline.</b>
 </p>
 
-[**Pixelabs Website**](https://pixelabs.in) • [**Legal & Privacy Portal**](https://policies.pixelabs.in/) • [**Features**](#-features) • [**Architecture**](#-architecture--tech-stack) • [**DevOps & CI/CD**](#-enterprise-devops--cicd) • [**Building**](#-building--testing)
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.aistudio.calculator.gtypxz">
+    <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="58">
+  </a>
+</p>
+
+[**Google Play**](https://play.google.com/store/apps/details?id=com.aistudio.calculator.gtypxz) • [**F-Droid Repository**](https://fdroid.pixelabs.in/) • [**Pixelabs Website**](https://pixelabs.in) • [**Legal & Privacy**](https://policies.pixelabs.in/) • [**Features**](#-features) • [**Architecture**](#-architecture--tech-stack) • [**DevOps & CI/CD**](#-enterprise-devops--cicd)
 
 </div>
+
+---
+
+## 📲 Download & Availability
+
+Pixelabs Calculator is officially published and live in **Production** on Google Play, as well as distributed via independent open-source channels:
+
+| Channel | Availability | Link / Details | Rating |
+|---|---|---|---|
+| **Google Play** | **Production (Public Live)** | [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.aistudio.calculator.gtypxz)<br>`com.aistudio.calculator.gtypxz` | **Rated for 3+** |
+| **Pixelabs F-Droid** | Official FOSS Repository | [**fdroid.pixelabs.in**](https://fdroid.pixelabs.in/)<br>Fingerprint: `3C3E9EF8F74E8E057FA0EA4965D19DE1E6A223719D0B2D6870FDC59F6B20B55E` | Open Source |
+| **GitHub Releases** | Direct Artifacts | [**Releases**](https://github.com/PixelabsDev/Calculator-/releases)<br>Universal `.apk`, Release `.aab`, mapping, symbols | FOSS |
+
+> [!NOTE]
+> Pixelabs Calculator is officially published under developer name **PixelabsDev** on Google Play. It features strict 100% offline mathematical execution, zero background analytics, zero advertising SDKs, and full Google Play policy compliance.
 
 ---
 
@@ -126,7 +148,7 @@ flowchart TD
 
     subgraph Distribution["5. Automated Zero-Touch Distribution"]
         F1["GitHub Release & Git Tag (AAB, Universal APK, Symbols, Mapping, SBOM)"]
-        F2["Google Play Console Deployment (Internal / Alpha / Beta / Production Tracks)"]
+        F2["Google Play Console Deployment (Production Track Live)"]
         E3 --> F1
         E3 --> F2
     end
@@ -159,7 +181,7 @@ The production pipeline enforces an enterprise fail-fast architecture across 14 
 
 4. **Automated Dual Distribution**:
    - **GitHub Releases**: Automatically tags the commit and publishes the release with `.aab`, universal `.apk`, `mapping.txt`, `native-debug-symbols.zip`, and `dependencies-sbom.txt`.
-   - **Google Play Console**: Deploys signed AAB with deobfuscation mapping and debug symbols directly to the target release track (`internal`, `alpha`, `beta`, or `production`).
+   - **Google Play Console**: Deploys signed AAB with deobfuscation mapping and debug symbols directly to the target release track. Pixelabs Calculator is currently live in **Production** on Google Play ([`com.aistudio.calculator.gtypxz`](https://play.google.com/store/apps/details?id=com.aistudio.calculator.gtypxz)).
 
 ### Supporting Workflows
 
