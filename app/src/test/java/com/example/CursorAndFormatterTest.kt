@@ -5,14 +5,17 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -361,7 +364,7 @@ class CursorAndFormatterTest {
     }
 
     @Test
-    fun testLongPressScrubFollowedByKeypadInputCollapsesSelectionAndInserts() {
+    fun testEdgeTapsAndSelectionCollapseOnKeypadInputInComposeUi() {
         composeTestRule.setContent {
             CalculatorAppScreen(viewModel = viewModel)
         }
@@ -372,18 +375,36 @@ class CursorAndFormatterTest {
         }
         composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("1,234")
 
-        // Simulate user long-pressing expression to scrub/select, then tapping keypad operator
+        // Tap far-left edge -> snaps cursor to 0 without stuck handle, then typing '9' inserts at start
         composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).performTouchInput {
-            longClick()
+            click(Offset(x = left + 4f, y = centerY))
         }
         composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("btn_9").performClick()
+        assertEquals("91234", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("91,234")
 
-        // Tapping any keypad button immediately dismisses handle/selection & updates cleanly
+        // Tap far-right edge -> snaps cursor to end, then typing '5' appends at end
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).performTouchInput {
+            click(Offset(x = right - 2f, y = centerY))
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("btn_5").performClick()
+        assertEquals("912345", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("912,345")
+
+        // Select a range inside Compose TextFieldState via semantics, then tap '+6' -> replaces selection cleanly
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).performSemanticsAction(
+            SemanticsActions.SetSelection
+        ) { setSelection ->
+            setSelection(2, 4, true)
+        }
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("btn_+").performClick()
         composeTestRule.onNodeWithTag("btn_6").performClick()
         composeTestRule.waitForIdle()
 
-        // Ensure expression evaluates accurately with zero crashed UI state
-        assertTrue(viewModel.inputState.value.contains("+6"))
+        assertEquals("91+645", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("91+645")
     }
 }
