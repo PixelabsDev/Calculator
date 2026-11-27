@@ -195,12 +195,13 @@ class CursorAndFormatterTest {
             composeTestRule.onNodeWithTag("btn_$key").performClick()
         }
 
-        // Underlying raw expression stays clean while preview shows evaluated value
+        // Underlying raw expression stays clean while display & preview render thousands commas
         assertEquals("1000×1000", viewModel.inputState.value)
-        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("1000×1000")
-        composeTestRule.onNodeWithTag("calculation_preview", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("1,000×1,000")
+        composeTestRule.onNodeWithTag("calculation_preview", useUnmergedTree = true).assertTextEquals("1,000,000")
 
         composeTestRule.onNodeWithTag("btn_=").performClick()
         assertEquals("1000000", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("1,000,000")
     }
 }
