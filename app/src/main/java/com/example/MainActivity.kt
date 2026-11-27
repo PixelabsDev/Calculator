@@ -732,26 +732,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
                                 horizontalAlignment = Alignment.End
                             ) {
-                                // Subtle pull-down affordance pill signaling swipe/tap to open History
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) { showHistoryDrawer = true }
-                                        .padding(vertical = 4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(36.dp)
-                                            .height(4.dp)
-                                            .clip(CircleShape)
-                                            .background(colorScheme.onSurfaceVariant.copy(alpha = 0.28f))
-                                    )
-                                }
-
                                 Spacer(
                                     modifier = Modifier
                                         .fillMaxWidth()
