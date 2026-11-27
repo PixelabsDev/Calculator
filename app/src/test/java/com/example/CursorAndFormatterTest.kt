@@ -32,6 +32,7 @@ import com.example.ui.theme.LightSurface
 import com.example.ui.theme.MyApplicationTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -406,5 +407,119 @@ class CursorAndFormatterTest {
 
         assertEquals("91+645", viewModel.inputState.value)
         composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("91+645")
+    }
+
+    @Test
+    fun testPostEvaluationDigitAndDecimalStartFresh() {
+        // 50 + 50 = 100 -> sets isEvaluated = true
+        listOf("5", "0", "+", "5", "0", "=").forEach { viewModel.handleKeyPress(it) }
+        assertEquals("100", viewModel.inputState.value)
+        assertTrue(viewModel.isEvaluated.value)
+
+        // Pressing a digit immediately clears evaluated result and starts fresh ("7", not "1007")
+        viewModel.handleKeyPress("7")
+        assertEquals("7", viewModel.inputState.value)
+        assertEquals(TextRange(1), viewModel.inputFieldState.value.selection)
+        assertFalse(viewModel.isEvaluated.value)
+
+        // Subsequent digits append normally
+        viewModel.handleKeyPress("8")
+        assertEquals("78", viewModel.inputState.value)
+
+        // Decimal right after decimal evaluation (5.5 + 1.2 = 6.7) must still start fresh "0."
+        viewModel.handleKeyPress("AC")
+        listOf("5", ".", "5", "+", "1", ".", "2", "=").forEach { viewModel.handleKeyPress(it) }
+        assertEquals("6.7", viewModel.inputState.value)
+        assertTrue(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress(".")
+        assertEquals("0.", viewModel.inputState.value)
+        assertEquals(TextRange(2), viewModel.inputFieldState.value.selection)
+        assertFalse(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress("5")
+        assertEquals("0.5", viewModel.inputState.value)
+    }
+
+    @Test
+    fun testPostEvaluationOperatorsContinueFromResultAndScientificStartersReset() {
+        // 50 + 50 = 100, then press × -> "100×" -> press 3 -> "100×3"
+        listOf("5", "0", "+", "5", "0", "=").forEach { viewModel.handleKeyPress(it) }
+        assertTrue(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress("×")
+        assertEquals("100×", viewModel.inputState.value)
+        assertEquals(TextRange(4), viewModel.inputFieldState.value.selection)
+        assertFalse(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress("3")
+        viewModel.handleKeyPress("=")
+        assertEquals("300", viewModel.inputState.value)
+        assertTrue(viewModel.isEvaluated.value)
+
+        // Also test +, -, ÷, %, ! chaining directly after evaluation
+        viewModel.handleKeyPress("+")
+        assertEquals("300+", viewModel.inputState.value)
+        assertFalse(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress("5")
+        viewModel.handleKeyPress("=")
+        assertEquals("305", viewModel.inputState.value)
+        assertTrue(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress("%")
+        assertEquals("305%", viewModel.inputState.value)
+        assertFalse(viewModel.isEvaluated.value)
+
+        // Scientific function / constant after evaluation starts fresh rather than multiplying by previous result
+        viewModel.handleKeyPress("=")
+        assertTrue(viewModel.isEvaluated.value)
+        viewModel.handleKeyPress("√")
+        assertEquals("√(", viewModel.inputState.value)
+        assertFalse(viewModel.isEvaluated.value)
+    }
+
+    @Test
+    fun testPostEvaluationClearBackspaceCursorEditAndComposeUiFlow() {
+        // Backspace immediately after evaluation edits string and resets isEvaluated
+        listOf("5", "0", "+", "5", "0", "=").forEach { viewModel.handleKeyPress(it) }
+        assertEquals("100", viewModel.inputState.value)
+        assertTrue(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress("⌫")
+        assertEquals("10", viewModel.inputState.value)
+        assertFalse(viewModel.isEvaluated.value)
+
+        viewModel.handleKeyPress("5")
+        assertEquals("105", viewModel.inputState.value)
+
+        // AC clears expression and resets isEvaluated
+        viewModel.handleKeyPress("=")
+        assertTrue(viewModel.isEvaluated.value)
+        viewModel.handleKeyPress("AC")
+        assertEquals("", viewModel.inputState.value)
+        assertFalse(viewModel.isEvaluated.value)
+
+        // Intentional cursor relocation inside an evaluated result preserves mid-number editing
+        listOf("5", "0", "+", "5", "0", "=").forEach { viewModel.handleKeyPress(it) }
+        assertTrue(viewModel.isEvaluated.value)
+        viewModel.onInputFieldValueChange(TextFieldValue("100", selection = TextRange(1)))
+        assertFalse(viewModel.isEvaluated.value)
+        viewModel.handleKeyPress("5")
+        assertEquals("1500", viewModel.inputState.value)
+
+        // End-to-end Compose UI click verification: 50 + 50 = 100, then tap 7 -> "7"
+        viewModel.handleKeyPress("AC")
+        composeTestRule.setContent {
+            CalculatorAppScreen(viewModel = viewModel)
+        }
+        listOf("5", "0", "+", "5", "0", "=").forEach { key ->
+            composeTestRule.onNodeWithTag("btn_$key").performClick()
+        }
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("100")
+
+        composeTestRule.onNodeWithTag("btn_7").performClick()
+        assertEquals("7", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("7")
     }
 }
