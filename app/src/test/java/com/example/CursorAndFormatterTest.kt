@@ -1,7 +1,11 @@
 package com.example
 
 import android.app.Application
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -342,12 +346,12 @@ class CursorAndFormatterTest {
         assertEquals(listOf(1), ExpressionFormatter.findCommaInsertionPositions("1234.5678"))
         assertEquals(emptyList<Int>(), ExpressionFormatter.findCommaInsertionPositions("123"))
 
-        val state = androidx.compose.foundation.text.input.TextFieldState(initialText = "1000×1000")
+        val state = TextFieldState(initialText = "1000×1000")
         composeTestRule.setContent {
-            androidx.compose.foundation.text.BasicTextField(
+            BasicTextField(
                 state = state,
                 outputTransformation = ThousandsOutputTransformation(),
-                modifier = androidx.compose.ui.Modifier.testTag("test_output_transformation")
+                modifier = Modifier.testTag("test_output_transformation")
             )
         }
 
