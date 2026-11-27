@@ -139,6 +139,12 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     private val _inputFieldState = MutableStateFlow(TextFieldValue(""))
     val inputFieldState: StateFlow<TextFieldValue> = _inputFieldState.asStateFlow()
 
+    private val _keypadEventCounter = MutableStateFlow(0)
+    val keypadEventCounter: StateFlow<Int> = _keypadEventCounter.asStateFlow()
+
+    private val _cursorDismissSignal = MutableStateFlow(0)
+    val cursorDismissSignal: StateFlow<Int> = _cursorDismissSignal.asStateFlow()
+
     private val _resultState = MutableStateFlow("")
     val resultState: StateFlow<String> = _resultState.asStateFlow()
 
@@ -256,6 +262,23 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     fun setInput(expression: String) {
         val cleaned = expression.replace(",", "")
         updateInputField(cleaned, cleaned.length)
+        _cursorDismissSignal.value += 1
+    }
+
+    /**
+     * Moves the cursor explicitly (e.g. far-left / far-right edge tap snapping)
+     * and optionally requests dismissal of any active teardrop drag handle.
+     */
+    fun moveCursorTo(rawIndex: Int, dismissHandle: Boolean = true) {
+        val current = _inputFieldState.value
+        val clamped = rawIndex.coerceIn(0, current.text.length)
+        val snapped = snapCursorOutOfFunctionTokens(current.text, clamped)
+        if (current.selection != TextRange(snapped)) {
+            _inputFieldState.value = current.copy(selection = TextRange(snapped))
+        }
+        if (dismissHandle) {
+            _cursorDismissSignal.value += 1
+        }
     }
 
     fun toggleScientific() {
@@ -267,6 +290,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun toggleRadMode() {
+        _keypadEventCounter.value += 1
         _isRadMode.value = !_isRadMode.value
     }
 
@@ -275,6 +299,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun toggleInvMode() {
+        _keypadEventCounter.value += 1
         _isInvMode.value = !_isInvMode.value
     }
 
@@ -291,6 +316,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun handleKeyPress(key: String) {
+        _keypadEventCounter.value += 1
         val field = _inputFieldState.value
         val current = field.text
         val selStart = min(field.selection.start, field.selection.end).coerceIn(0, current.length)

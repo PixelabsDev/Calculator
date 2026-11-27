@@ -1,19 +1,30 @@
 package com.example
 
 import android.app.Application
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
 import com.example.calculator.CalculatorViewModel
+import com.example.calculator.DisplayTypographyScaler
 import com.example.calculator.ExpressionFormatter
 import com.example.calculator.ExpressionParser
+import com.example.calculator.ThousandsOutputTransformation
 import com.example.calculator.ThousandsSeparatorVisualTransformation
 import com.example.ui.theme.DarkPrimaryContainer
 import com.example.ui.theme.DarkSurface
@@ -203,5 +214,197 @@ class CursorAndFormatterTest {
         composeTestRule.onNodeWithTag("btn_=").performClick()
         assertEquals("1000000", viewModel.inputState.value)
         composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("1,000,000")
+    }
+
+    @Test
+    fun testTypographyAutoScalingGracefullyStepsDownWithoutWrapping() {
+        val portraitTiers = DisplayTypographyScaler.PORTRAIT_INPUT_SIZES_SP
+        val previewTiers = DisplayTypographyScaler.PORTRAIT_PREVIEW_SIZES_SP
+        val containerWidthPx = 800f
+
+        // Short formula fits cleanly at largest 56sp tier
+        val shortFont = DisplayTypographyScaler.selectFittingFontSizeSp(
+            tiersSp = portraitTiers,
+            maxWidthPx = containerWidthPx
+        ) { sp -> 7 * sp * 0.6f } // 7 chars at 56sp -> ~235px <= 800px
+        assertEquals(56f, shortFont)
+
+        // Medium formula (~25 chars) overflows 56sp (840px) -> downscales cleanly to 44sp (660px)
+        val mediumFont = DisplayTypographyScaler.selectFittingFontSizeSp(
+            tiersSp = portraitTiers,
+            maxWidthPx = containerWidthPx
+        ) { sp -> 25 * sp * 0.6f }
+        assertEquals(44f, mediumFont)
+
+        // Longer formula (~34 chars) overflows 44sp (897px) -> downscales cleanly to 36sp (734px)
+        val longFont = DisplayTypographyScaler.selectFittingFontSizeSp(
+            tiersSp = portraitTiers,
+            maxWidthPx = containerWidthPx
+        ) { sp -> 34 * sp * 0.6f }
+        assertEquals(36f, longFont)
+
+        // Very long formula overflows 36sp -> floors cleanly at 28sp (preserving readability + scroll)
+        val ultraLongFont = DisplayTypographyScaler.selectFittingFontSizeSp(
+            tiersSp = portraitTiers,
+            maxWidthPx = containerWidthPx
+        ) { sp -> 60 * sp * 0.6f }
+        assertEquals(28f, ultraLongFont)
+
+        // Short preview starts at prominent 32sp
+        val shortPreview = DisplayTypographyScaler.selectFittingFontSizeSp(
+            tiersSp = previewTiers,
+            maxWidthPx = containerWidthPx
+        ) { sp -> 9 * sp * 0.6f }
+        assertEquals(32f, shortPreview)
+    }
+
+    @Test
+    fun testEdgeTapSnappingResolvesFarLeftRightWithoutFalseMiddleTrigger() {
+        // Right-aligned short string "1234" occupying x = [650f .. 860f] in a 900px container
+        val width = 900f
+        val edgeZone = 45f
+        val leftGlyph = 650f
+        val rightGlyph = 860f
+
+        // Far-left margin tap snaps to 0
+        assertEquals(
+            0,
+            DisplayTypographyScaler.resolveEdgeTapCursorIndex(
+                tapX = 15f,
+                fieldWidthPx = width,
+                edgeZonePx = edgeZone,
+                lineLeftPx = leftGlyph,
+                lineRightPx = rightGlyph,
+                textLength = 4
+            )
+        )
+
+        // Blank area left of short right-aligned text snaps cleanly to 0
+        assertEquals(
+            0,
+            DisplayTypographyScaler.resolveEdgeTapCursorIndex(
+                tapX = 320f,
+                fieldWidthPx = width,
+                edgeZonePx = edgeZone,
+                lineLeftPx = leftGlyph,
+                lineRightPx = rightGlyph,
+                textLength = 4
+            )
+        )
+
+        // Tap directly over middle digits returns null (places cursor cleanly between characters)
+        assertEquals(
+            null,
+            DisplayTypographyScaler.resolveEdgeTapCursorIndex(
+                tapX = 760f,
+                fieldWidthPx = width,
+                edgeZonePx = edgeZone,
+                lineLeftPx = leftGlyph,
+                lineRightPx = rightGlyph,
+                textLength = 4
+            )
+        )
+
+        // Tap on far-right edge margin snaps cleanly to text.length (4)
+        assertEquals(
+            4,
+            DisplayTypographyScaler.resolveEdgeTapCursorIndex(
+                tapX = 888f,
+                fieldWidthPx = width,
+                edgeZonePx = edgeZone,
+                lineLeftPx = leftGlyph,
+                lineRightPx = rightGlyph,
+                textLength = 4
+            )
+        )
+    }
+
+    @Test
+    fun testKeypadEventAndEdgeSnapIncrementHandleDismissalSignals() {
+        val initialKeypad = viewModel.keypadEventCounter.value
+        val initialDismiss = viewModel.cursorDismissSignal.value
+
+        // Even a no-op keypad tap (e.g. Backspace when empty) triggers dismissal signal
+        viewModel.handleKeyPress("⌫")
+        assertEquals(initialKeypad + 1, viewModel.keypadEventCounter.value)
+
+        viewModel.setInput("12+34")
+        val afterSetDismiss = viewModel.cursorDismissSignal.value
+        assertEquals(initialDismiss + 1, afterSetDismiss)
+
+        // Moving cursor via edge tap updates selection and increments dismiss signal
+        viewModel.moveCursorTo(0, dismissHandle = true)
+        assertEquals(TextRange(0), viewModel.inputFieldState.value.selection)
+        assertEquals(afterSetDismiss + 1, viewModel.cursorDismissSignal.value)
+
+        // Typing any digit advances keypad counter cleanly
+        viewModel.handleKeyPress("9")
+        assertEquals("912+34", viewModel.inputState.value)
+        assertEquals(initialKeypad + 2, viewModel.keypadEventCounter.value)
+    }
+
+    @Test
+    fun testThousandsOutputTransformationMatchesFormatterPositions() {
+        assertEquals(listOf(1, 6), ExpressionFormatter.findCommaInsertionPositions("1000×1000"))
+        assertEquals(listOf(1), ExpressionFormatter.findCommaInsertionPositions("1234.5678"))
+        assertEquals(emptyList<Int>(), ExpressionFormatter.findCommaInsertionPositions("123"))
+
+        val state = TextFieldState(initialText = "1000×1000")
+        composeTestRule.setContent {
+            BasicTextField(
+                state = state,
+                outputTransformation = ThousandsOutputTransformation(),
+                modifier = Modifier.testTag("test_output_transformation")
+            )
+        }
+
+        // Underlying TextFieldState stays clean raw while rendered output contains thousands commas
+        assertEquals("1000×1000", state.text.toString())
+        composeTestRule.onNodeWithTag("test_output_transformation").assertTextEquals("1,000×1,000")
+    }
+
+    @Test
+    fun testEdgeTapsAndSelectionCollapseOnKeypadInputInComposeUi() {
+        composeTestRule.setContent {
+            CalculatorAppScreen(viewModel = viewModel)
+        }
+
+        // Enter "1234" -> displays as "1,234"
+        listOf("1", "2", "3", "4").forEach { key ->
+            composeTestRule.onNodeWithTag("btn_$key").performClick()
+        }
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("1,234")
+
+        // Tap far-left edge -> snaps cursor to 0 without stuck handle, then typing '9' inserts at start
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).performTouchInput {
+            click(Offset(x = left + 4f, y = centerY))
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("btn_9").performClick()
+        assertEquals("91234", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("91,234")
+
+        // Tap far-right edge -> snaps cursor to end, then typing '5' appends at end
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).performTouchInput {
+            click(Offset(x = right - 2f, y = centerY))
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("btn_5").performClick()
+        assertEquals("912345", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("912,345")
+
+        // Select a range inside Compose TextFieldState via semantics, then tap '+6' -> replaces selection cleanly
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).performSemanticsAction(
+            SemanticsActions.SetSelection
+        ) { setSelection ->
+            setSelection(2, 4, true)
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("btn_+").performClick()
+        composeTestRule.onNodeWithTag("btn_6").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals("91+645", viewModel.inputState.value)
+        composeTestRule.onNodeWithTag("calculation_input", useUnmergedTree = true).assertTextEquals("91+645")
     }
 }

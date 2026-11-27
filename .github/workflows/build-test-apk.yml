@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -15,7 +19,7 @@ concurrency:
 
 jobs:
   build-debug-apk:
-    name: Build & Package Debug APK
+    name: Build, Lint & Test
     runs-on: ubuntu-latest
 
     steps:
@@ -34,7 +38,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools'
+          packages: 'platform-tools build-tools;34.0.0'
           accept-android-sdk-licenses: true
 
       - name: Grant Execute Permission for Gradlew
@@ -42,6 +46,9 @@ jobs:
 
       - name: Run Unit Tests
         run: ./gradlew test --stacktrace
+
+      - name: Run Android Lint (Release)
+        run: ./gradlew lintRelease --stacktrace
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
