@@ -2,6 +2,8 @@ package com.example.calculator
 
 import android.app.Application
 import android.content.Context
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
@@ -22,12 +24,23 @@ import java.math.MathContext
 import java.math.RoundingMode
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 class CalculatorViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         const val PREF_KEY_BLOCK_SCREENSHOTS = "block_screenshots_v2"
         private const val LEGACY_PREF_KEY_BLOCK_SCREENSHOTS = "screenshot_blocked"
+
+        // Multi-character atomic tokens (ordered longest-first for unambiguous matching)
+        private val FUNCTION_TOKENS = listOf(
+            "sin⁻¹(", "cos⁻¹(", "tan⁻¹(",
+            "sin(", "cos(", "tan(",
+            "log(", "ln(", "√("
+        )
+
+        private val POSTFIX_MULTIPLY_TRIGGERS = setOf('π', 'e', ')', '%', '!')
     }
 
     private val prefs = application.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
@@ -110,7 +123,6 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         if (prefs.contains(LEGACY_PREF_KEY_BLOCK_SCREENSHOTS)) {
             prefs.edit().remove(LEGACY_PREF_KEY_BLOCK_SCREENSHOTS).apply()
         }
-        
     }
 
     // List of calculation histories
@@ -123,6 +135,9 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _inputState = MutableStateFlow("")
     val inputState: StateFlow<String> = _inputState.asStateFlow()
+
+    private val _inputFieldState = MutableStateFlow(TextFieldValue(""))
+    val inputFieldState: StateFlow<TextFieldValue> = _inputFieldState.asStateFlow()
 
     private val _resultState = MutableStateFlow("")
     val resultState: StateFlow<String> = _resultState.asStateFlow()
@@ -181,8 +196,66 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    private fun updateInputField(newText: String, newCursor: Int = newText.length) {
+        val clamped = newCursor.coerceIn(0, newText.length)
+        val snappedCursor = snapCursorOutOfFunctionTokens(newText, clamped)
+        _inputFieldState.value = TextFieldValue(
+            text = newText,
+            selection = TextRange(snappedCursor)
+        )
+        _inputState.value = newText
+    }
+
+    /**
+     * Prevents placing the cursor inside multi-character function tokens like "sin(" or "cos⁻¹(",
+     * keeping function tokens atomic just like Google Calculator.
+     */
+    private fun snapCursorOutOfFunctionTokens(text: String, rawCursor: Int): Int {
+        val cursor = rawCursor.coerceIn(0, text.length)
+        var i = 0
+        while (i < text.length) {
+            val matched = FUNCTION_TOKENS.firstOrNull { token ->
+                text.startsWith(token, startIndex = i)
+            }
+            if (matched != null) {
+                val end = i + matched.length
+                if (cursor in (i + 1) until end) {
+                    return if (cursor - i < end - cursor) i else end
+                }
+                i = end
+            } else {
+                i++
+            }
+        }
+        return cursor
+    }
+
+    /**
+     * Handles interactive cursor movement, text selection, or physical keyboard input
+     * from the Compose expression [androidx.compose.foundation.text.BasicTextField].
+     */
+    fun onInputFieldValueChange(newValue: TextFieldValue) {
+        val current = _inputFieldState.value
+        if (newValue.text == current.text) {
+            val snappedStart = snapCursorOutOfFunctionTokens(newValue.text, newValue.selection.start)
+            val snappedEnd = snapCursorOutOfFunctionTokens(newValue.text, newValue.selection.end)
+            val updated = newValue.copy(selection = TextRange(snappedStart, snappedEnd))
+            _inputFieldState.value = updated
+            return
+        }
+
+        // Physical keyboard / paste edits: normalize operators and strip thousands commas
+        val cleaned = newValue.text
+            .replace(",", "")
+            .replace("*", "×")
+            .replace("/", "÷")
+        val cursor = newValue.selection.end.coerceIn(0, cleaned.length)
+        updateInputField(cleaned, cursor)
+    }
+
     fun setInput(expression: String) {
-        _inputState.value = expression
+        val cleaned = expression.replace(",", "")
+        updateInputField(cleaned, cleaned.length)
     }
 
     fun toggleScientific() {
@@ -218,72 +291,45 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun handleKeyPress(key: String) {
+        val field = _inputFieldState.value
+        val current = field.text
+        val selStart = min(field.selection.start, field.selection.end).coerceIn(0, current.length)
+        val selEnd = max(field.selection.start, field.selection.end).coerceIn(0, current.length)
+        val hasSelection = selStart != selEnd
+
         when (key) {
             "AC" -> {
-                _inputState.value = ""
+                updateInputField("", 0)
                 _resultState.value = ""
+                return
             }
             "⌫" -> {
-                val current = _inputState.value
-                if (current.isEmpty()) return
+                if (hasSelection) {
+                    val newText = current.removeRange(selStart, selEnd)
+                    updateInputField(newText, selStart)
+                    return
+                }
+                if (selStart == 0) return
 
-                // Slick multichar deletion for scientific functions
-                val functions = listOf(
-                    "sin⁻¹(", "cos⁻¹(", "tan⁻¹(",
-                    "sin(", "cos(", "tan(",
-                    "log(", "ln(", "√("
-                )
-                var deleted = false
-                for (f in functions) {
-                    if (current.endsWith(f)) {
-                        _inputState.value = current.substring(0, current.length - f.length)
-                        deleted = true
-                        break
+                val before = current.substring(0, selStart)
+                val after = current.substring(selStart)
+
+                // Slick multichar deletion for scientific functions left of cursor
+                for (f in FUNCTION_TOKENS) {
+                    if (before.endsWith(f)) {
+                        val trimmedBefore = before.substring(0, before.length - f.length)
+                        updateInputField(trimmedBefore + after, trimmedBefore.length)
+                        return
                     }
                 }
-                if (!deleted) {
-                    _inputState.value = current.substring(0, current.length - 1)
-                }
-            }
-            "(" -> {
-                val current = _inputState.value
-                val lastChar = current.lastOrNull()
-                if (lastChar != null && (lastChar.isDigit() || lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!')) {
-                    _inputState.value += "×("
-                } else {
-                    _inputState.value += "("
-                }
-            }
-            ")" -> {
-                val current = _inputState.value
-                val openCount = current.count { it == '(' }
-                val closeCount = current.count { it == ')' }
-                if (openCount > closeCount && current.isNotEmpty() && !isOperator(current.last()) && current.last() != '(') {
-                    _inputState.value += ")"
-                }
-            }
-            "( )" -> {
-                val current = _inputState.value
-                val openCount = current.count { it == '(' }
-                val closeCount = current.count { it == ')' }
-                val lastChar = current.lastOrNull()
-
-                if (openCount > closeCount && lastChar != null && lastChar != '(' && !isOperator(lastChar)) {
-                    _inputState.value += ")"
-                } else {
-                    if (lastChar != null && (lastChar.isDigit() || lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!')) {
-                        _inputState.value += "×("
-                    } else {
-                        _inputState.value += "("
-                    }
-                }
+                val trimmedBefore = before.substring(0, before.length - 1)
+                updateInputField(trimmedBefore + after, trimmedBefore.length)
+                return
             }
             "=" -> {
-                val currentInput = _inputState.value
-                if (currentInput.isEmpty()) return
+                if (current.isEmpty()) return
 
-                // Auto balance parentheses for clean final evaluation
-                var evalInput = currentInput
+                var evalInput = current
                 val openCount = evalInput.count { it == '(' }
                 val closeCount = evalInput.count { it == ')' }
                 if (openCount > closeCount) {
@@ -295,8 +341,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                     val rawResult = parser.evaluate(evalInput)
                     val formattedResult = formatResult(rawResult)
 
-                    // Avoid saving duplicate or trivial entries (e.g. single number)
-                    val isTrivial = currentInput.toDoubleOrNull() != null || currentInput == formattedResult
+                    val isTrivial = current.toDoubleOrNull() != null || current == formattedResult
                     if (!isTrivial) {
                         viewModelScope.launch {
                             try {
@@ -312,54 +357,89 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                         }
                     }
 
-                    _inputState.value = formattedResult
+                    updateInputField(formattedResult, formattedResult.length)
                     _resultState.value = ""
                 } catch (e: Throwable) {
                     _resultState.value = e.message ?: "Error"
                 }
+                return
+            }
+        }
+
+        // For all insertion keys: replace any selected range first, then insert relative to (before | after)
+        val before = current.substring(0, selStart)
+        val after = current.substring(selEnd)
+        val lastBefore = before.lastOrNull()
+
+        when (key) {
+            "(" -> {
+                val insert = if (lastBefore != null && lastBefore in POSTFIX_MULTIPLY_TRIGGERS) "×(" else "("
+                updateInputField(before + insert + after, before.length + insert.length)
+            }
+            ")" -> {
+                val openCount = before.count { it == '(' }
+                val closeCount = before.count { it == ')' }
+                if (openCount > closeCount && before.isNotEmpty() && !isOperator(lastBefore!!) && lastBefore != '(') {
+                    updateInputField("$before)$after", before.length + 1)
+                } else if (hasSelection) {
+                    updateInputField(before + after, before.length)
+                }
+            }
+            "( )" -> {
+                val openCount = before.count { it == '(' }
+                val closeCount = before.count { it == ')' }
+                if (openCount > closeCount && lastBefore != null && lastBefore != '(' && !isOperator(lastBefore)) {
+                    updateInputField("$before)$after", before.length + 1)
+                } else {
+                    val insert = if (lastBefore != null && lastBefore in POSTFIX_MULTIPLY_TRIGGERS) "×(" else "("
+                    updateInputField(before + insert + after, before.length + insert.length)
+                }
             }
             "+", "-", "×", "÷", "^" -> {
-                val current = _inputState.value
-                if (current.isEmpty()) {
-                    if (key == "-") {
-                        _inputState.value = "-"
+                if (before.isEmpty()) {
+                    if (key == "-" && !after.startsWith("-")) {
+                        updateInputField("-$after", 1)
+                    } else if (hasSelection) {
+                        updateInputField(after, 0)
                     }
                     return
                 }
 
-                val lastChar = current.last()
-
-                // Allow unary minus following a multiply, divide, power, or open parenthesis
-                if (key == "-" && (lastChar == '×' || lastChar == '÷' || lastChar == '^' || lastChar == '(')) {
-                    _inputState.value += key
+                // Allow unary minus following multiply, divide, power, or open parenthesis
+                if (key == "-" && (lastBefore == '×' || lastBefore == '÷' || lastBefore == '^' || lastBefore == '(')) {
+                    updateInputField(before + key + after, before.length + 1)
                     return
                 }
 
-                if (isOperator(lastChar)) {
-                    // Check if second-to-last char is also an operator (e.g. "×-")
-                    if (current.length >= 2 && isOperator(current[current.length - 2])) {
-                        _inputState.value = current.substring(0, current.length - 2) + key
+                if (lastBefore != null && isOperator(lastBefore)) {
+                    val newBefore = if (before.length >= 2 && isOperator(before[before.length - 2])) {
+                        before.substring(0, before.length - 2) + key
                     } else {
-                        _inputState.value = current.substring(0, current.length - 1) + key
+                        before.substring(0, before.length - 1) + key
                     }
-                } else if (lastChar != '(') {
-                    _inputState.value += key
+                    updateInputField(newBefore + after, newBefore.length)
+                } else if (lastBefore != '(') {
+                    updateInputField(before + key + after, before.length + 1)
+                } else if (hasSelection) {
+                    updateInputField(before + after, before.length)
                 }
             }
             "%" -> {
-                val current = _inputState.value
-                if (current.isNotEmpty() && (current.last().isDigit() || current.last() == ')' || current.last() == 'π' || current.last() == 'e' || current.last() == '!')) {
-                    _inputState.value += "%"
+                if (lastBefore != null && (lastBefore.isDigit() || lastBefore == ')' || lastBefore == 'π' || lastBefore == 'e' || lastBefore == '!')) {
+                    updateInputField("$before%$after", before.length + 1)
+                } else if (hasSelection) {
+                    updateInputField(before + after, before.length)
                 }
             }
             "!" -> {
-                val current = _inputState.value
-                if (current.isNotEmpty() && (current.last().isDigit() || current.last() == ')' || current.last() == 'π' || current.last() == 'e')) {
-                    _inputState.value += "!"
+                if (lastBefore != null && (lastBefore.isDigit() || lastBefore == ')' || lastBefore == 'π' || lastBefore == 'e')) {
+                    updateInputField("$before!$after", before.length + 1)
+                } else if (hasSelection) {
+                    updateInputField(before + after, before.length)
                 }
             }
             "π", "e" -> {
-                appendConstant(key)
+                insertWithImplicitMultiply(before, after, key)
             }
             "sin", "cos", "tan", "ln", "log", "√" -> {
                 val finalFunc = when (key) {
@@ -371,69 +451,58 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                     "√" -> "√("
                     else -> key
                 }
-                appendFunction(finalFunc)
+                insertWithImplicitMultiply(before, after, finalFunc)
             }
             "." -> {
-                val current = _inputState.value
-                val lastChar = current.lastOrNull()
-                if (lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!') {
-                    _inputState.value += "×0."
+                if (lastBefore in POSTFIX_MULTIPLY_TRIGGERS) {
+                    val insert = "×0."
+                    updateInputField(before + insert + after, before.length + insert.length)
                     return
                 }
 
-                var hasDecimal = false
-                for (i in current.length - 1 downTo 0) {
-                    val ch = current[i]
-                    if (ch == '.') {
-                        hasDecimal = true
-                        break
+                if (numberTokenAtCursorHasDecimal(before, after)) {
+                    if (hasSelection) {
+                        updateInputField(before + after, before.length)
                     }
-                    if (!ch.isDigit()) {
-                        break
-                    }
+                    return
                 }
-                if (!hasDecimal) {
-                    if (current.isEmpty() || !current.last().isDigit()) {
-                        _inputState.value += "0."
-                    } else {
-                        _inputState.value += "."
-                    }
-                }
+
+                val insert = if (before.isEmpty() || !before.last().isDigit()) "0." else "."
+                updateInputField(before + insert + after, before.length + insert.length)
             }
             else -> { // Standard digit input 0-9
-                val current = _inputState.value
-                val lastChar = current.lastOrNull()
-
-                // If last char is a constant, closed paren, %, or ! and we append a digit, insert implicit multiply
-                if (lastChar != null && (lastChar == 'π' || lastChar == 'e' || lastChar == ')' || lastChar == '%' || lastChar == '!')) {
-                    _inputState.value += "×$key"
+                val insert = if (lastBefore != null && lastBefore in POSTFIX_MULTIPLY_TRIGGERS) {
+                    "×$key"
                 } else {
-                    _inputState.value += key
+                    key
                 }
+                updateInputField(before + insert + after, before.length + insert.length)
             }
         }
     }
 
-    private fun appendConstant(constant: String) {
-        val current = _inputState.value
-        val lastChar = current.lastOrNull()
-        val prefix = if (lastChar != null && (lastChar.isDigit() || lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!')) {
-            "×$constant"
+    private fun insertWithImplicitMultiply(before: String, after: String, token: String) {
+        val lastBefore = before.lastOrNull()
+        val insert = if (lastBefore != null && (lastBefore.isDigit() || lastBefore in POSTFIX_MULTIPLY_TRIGGERS)) {
+            "×$token"
         } else {
-            constant
+            token
         }
-        _inputState.value += prefix
+        updateInputField(before + insert + after, before.length + insert.length)
     }
 
-    private fun appendFunction(func: String) {
-        val current = _inputState.value
-        val lastChar = current.lastOrNull()
-        val prefix = if (lastChar != null && (lastChar.isDigit() || lastChar == ')' || lastChar == 'π' || lastChar == 'e' || lastChar == '%' || lastChar == '!')) {
-            "×$func"
-        } else {
-            func
+    private fun numberTokenAtCursorHasDecimal(before: String, after: String): Boolean {
+        for (i in before.length - 1 downTo 0) {
+            val ch = before[i]
+            if (ch == '.') return true
+            if (!ch.isDigit()) break
         }
-        _inputState.value += prefix
+        for (i in after.indices) {
+            val ch = after[i]
+            if (ch == '.') return true
+            if (!ch.isDigit()) break
+        }
+        return false
     }
 
     private fun isOperator(char: Char): Boolean {

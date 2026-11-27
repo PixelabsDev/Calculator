@@ -71,6 +71,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -81,6 +82,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
@@ -91,13 +93,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -107,27 +113,59 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.InterceptPlatformTextInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalTextInputService
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.awaitCancellation
 import kotlin.math.roundToInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.calculator.CalculatorViewModel
+import com.example.calculator.ExpressionFormatter
+import com.example.calculator.ThousandsSeparatorVisualTransformation
 import com.example.data.HistoryEntry
 import com.example.report.ReportIssueDialog
 import com.example.ui.theme.MyApplicationTheme
 
 val LocalButtonAspectRatio = compositionLocalOf { 1f }
+
+@Immutable
+data class CalculatorColors(
+    val appBg: Color,
+    val displayBg: Color,
+    val keypadBg: Color,
+    val numberBtnBg: Color,
+    val numberBtnTxt: Color,
+    val operatorBtnBg: Color,
+    val operatorBtnTxt: Color,
+    val scientificBtnBg: Color,
+    val scientificBtnTxt: Color,
+    val clearBtnBg: Color,
+    val clearBtnTxt: Color,
+    val equalsBtnBg: Color,
+    val equalsBtnTxt: Color,
+    val activeToggleBg: Color,
+    val activeToggleTxt: Color,
+    val icon: Color,
+    val displayText: Color,
+    val displayPlaceholder: Color,
+    val displayPreview: Color,
+    val cursor: Color
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -148,16 +186,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val themeMode by viewModel.themeMode.collectAsState()
-            val systemDark = isSystemInDarkTheme()
-            val isDark = when (themeMode) {
-                com.example.calculator.ThemeMode.SYSTEM -> systemDark
-                com.example.calculator.ThemeMode.LIGHT -> false
-                com.example.calculator.ThemeMode.DARK -> true
-            }
-            MyApplicationTheme(darkTheme = isDark) {
-                CalculatorAppScreen(viewModel)
-            }
+            CalculatorAppScreen(viewModel)
         }
     }
 }
@@ -166,6 +195,7 @@ class MainActivity : ComponentActivity() {
 fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
     val context = LocalContext.current
     val input by viewModel.inputState.collectAsState()
+    val inputFieldValue by viewModel.inputFieldState.collectAsState()
     val result by viewModel.resultState.collectAsState()
     val isRadMode by viewModel.isRadMode.collectAsState()
     val isInvMode by viewModel.isInvMode.collectAsState()
@@ -180,39 +210,74 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-    // Theme responsive coloring setup
+    // Adaptive Material You theming: Android 12+ dynamic wallpaper palette, pre-Android 10 defaults to Dark fallback
     val themeMode by viewModel.themeMode.collectAsState()
+    val systemDark = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        isSystemInDarkTheme()
+    } else {
+        true
+    }
     val isDark = when (themeMode) {
-        com.example.calculator.ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        com.example.calculator.ThemeMode.SYSTEM -> systemDark
         com.example.calculator.ThemeMode.LIGHT -> false
         com.example.calculator.ThemeMode.DARK -> true
     }
 
-    // High-contrast refined palette (Light vs Dark adaptation)
-    val displayBgColor = if (isDark) Color(0xFF0F0E14) else Color(0xFFFFFFFF)
-    val appBgColor = if (isDark) Color(0xFF0F0E14) else Color(0xFFFFFFFF)
-    val keypadBgColor = if (isDark) Color(0xFF1B1824) else Color(0xFFEDE8F5)
+    MyApplicationTheme(darkTheme = isDark) {
+        val colorScheme = MaterialTheme.colorScheme
+        val calcColors = CalculatorColors(
+            appBg = colorScheme.surface,
+            displayBg = colorScheme.surfaceContainerLow,
+            keypadBg = colorScheme.surface,
+            numberBtnBg = colorScheme.surfaceContainerHigh,
+            numberBtnTxt = colorScheme.onSurface,
+            operatorBtnBg = colorScheme.tertiaryContainer,
+            operatorBtnTxt = colorScheme.onTertiaryContainer,
+            scientificBtnBg = colorScheme.secondaryContainer,
+            scientificBtnTxt = colorScheme.onSecondaryContainer,
+            clearBtnBg = colorScheme.secondaryContainer,
+            clearBtnTxt = colorScheme.onSecondaryContainer,
+            equalsBtnBg = colorScheme.primaryContainer,
+            equalsBtnTxt = colorScheme.onPrimaryContainer,
+            activeToggleBg = colorScheme.primary,
+            activeToggleTxt = colorScheme.onPrimary,
+            icon = colorScheme.onSurface,
+            displayText = colorScheme.onSurface,
+            displayPlaceholder = colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            displayPreview = colorScheme.onSurfaceVariant,
+            cursor = colorScheme.primary
+        )
 
-    // Number keys coloring (0-9, .)
-    val numberBtnBg = if (isDark) Color(0xFF2C2738) else Color(0xFFFFFFFF)
-    val numberBtnTxt = if (isDark) Color(0xFFFFFFFF) else Color(0xFF191622)
+        val displayBgColor = calcColors.displayBg
+        val appBgColor = calcColors.appBg
+        val keypadBgColor = calcColors.keypadBg
+        val numberBtnBg = calcColors.numberBtnBg
+        val numberBtnTxt = calcColors.numberBtnTxt
+        val operatorBtnBg = calcColors.operatorBtnBg
+        val operatorBtnTxt = calcColors.operatorBtnTxt
+        val scientificBtnBg = calcColors.scientificBtnBg
+        val scientificBtnTxt = calcColors.scientificBtnTxt
+        val equalsBtnBg = calcColors.equalsBtnBg
+        val equalsBtnTxt = calcColors.equalsBtnTxt
+        val iconColor = calcColors.icon
 
-    // Basic operator coloring (+, -, ×, ÷, ( ), %)
-    val operatorBtnBg = if (isDark) Color(0xFF493E5C) else Color(0xFFDCD2EC)
-    val operatorBtnTxt = if (isDark) Color(0xFFF3EDFF) else Color(0xFF25183E)
+        val expressionFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(showHistoryDrawer, showReportDialog, isPortrait) {
+            if (!showHistoryDrawer && !showReportDialog) {
+                try {
+                    expressionFocusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+            }
+        }
 
-    // Scientific specific coloring (√, π, ^, !, sin, cos, tan, ln, log, e)
-    val scientificBtnBg = if (isDark) Color(0xFF383048) else Color(0xFFDCD2EC)
-    val scientificBtnTxt = if (isDark) Color(0xFFD6C4FF) else Color(0xFF321F53)
-
-    // Equals high-contrast accent button highlighting
-    val equalsBtnBg = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
-    val equalsBtnTxt = if (isDark) Color(0xFF381E72) else Color(0xFFFFFFFF)
-
-    val iconColor = if (isDark) Color(0xFFF3EDFF) else Color(0xFF191622)
+        BackHandler(enabled = showHistoryDrawer) {
+            showHistoryDrawer = false
+        }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = appBgColor,
         contentWindowInsets = WindowInsets.safeDrawing
     ) { padding ->
     Box(
@@ -421,7 +486,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 Text(
                                     text = "Calculation History",
                                     style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = if (isDark) Color(0xFFB0AAB8) else Color(0xFF5A5565),
+                                        color = colorScheme.onSurfaceVariant,
                                         fontWeight = FontWeight.SemiBold
                                     ),
                                     modifier = Modifier.padding(bottom = 12.dp)
@@ -444,11 +509,12 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                             horizontalAlignment = Alignment.End
                                         ) {
                                             Text(
-                                                text = item.expression,
+                                                text = ExpressionFormatter.formatForDisplay(item.expression),
                                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                                    color = if (isDark) Color(0xFFCBD5E1) else Color(0xFF334155),
+                                                    color = colorScheme.onSurfaceVariant,
                                                     fontSize = 20.sp,
-                                                    fontWeight = FontWeight.Medium
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontFeatureSettings = "tnum"
                                                 ),
                                                 textAlign = TextAlign.End,
                                                 maxLines = 1,
@@ -457,11 +523,12 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                             )
                                             Spacer(modifier = Modifier.height(2.dp))
                                             Text(
-                                                text = item.result,
+                                                text = ExpressionFormatter.formatResultForDisplay(item.result),
                                                 style = MaterialTheme.typography.headlineLarge.copy(
-                                                    color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0F172A),
+                                                    color = colorScheme.onSurface,
                                                     fontWeight = FontWeight.SemiBold,
-                                                    fontSize = if (item.result.length > 12) 24.sp else 32.sp
+                                                    fontSize = if (item.result.length > 12) 24.sp else 32.sp,
+                                                    fontFeatureSettings = "tnum"
                                                 ),
                                                 textAlign = TextAlign.End,
                                                 maxLines = 1,
@@ -479,7 +546,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     Text(
                                         text = "Your history is clean.",
                                         style = MaterialTheme.typography.bodyMedium.copy(
-                                            color = if (isDark) Color(0xFFA1A1AA) else Color(0xFF64748B)
+                                            color = colorScheme.onSurfaceVariant
                                         )
                                     )
                                 }
@@ -494,7 +561,10 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             label = "sheetHandleDragOffset"
                         )
 
-                        val currentPreviewText = if (result.isNotEmpty()) result else if (input.isNotEmpty()) input else "0"
+                        val rawPreviewText = if (result.isNotEmpty()) result else if (input.isNotEmpty()) input else "0"
+                        val currentPreviewText = remember(rawPreviewText) {
+                            ExpressionFormatter.formatResultForDisplay(rawPreviewText)
+                        }
                         val bottomPreviewScroll = rememberScrollState()
                         LaunchedEffect(currentPreviewText) {
                             if (currentPreviewText.isNotEmpty()) {
@@ -535,7 +605,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 }
                                 .clickable { showHistoryDrawer = false },
                             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                            color = if (isDark) Color(0xFF221E2C) else Color(0xFFEDE8F5)
+                            color = colorScheme.surfaceContainerHigh
                         ) {
                             Column(
                                 modifier = Modifier
@@ -549,7 +619,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                         .width(36.dp)
                                         .height(4.dp)
                                         .clip(CircleShape)
-                                        .background((if (isDark) Color(0xFF9E9B9F) else Color(0xFF7D7A7F)).copy(alpha = 0.6f))
+                                        .background(colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
                                 )
 
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -562,7 +632,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     Text(
                                         text = "Current expression",
                                         style = MaterialTheme.typography.bodyMedium.copy(
-                                            color = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569),
+                                            color = colorScheme.onSurfaceVariant,
                                             fontWeight = FontWeight.Medium
                                         ),
                                         maxLines = 1,
@@ -579,8 +649,9 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                             text = currentPreviewText,
                                             style = MaterialTheme.typography.headlineLarge.copy(
                                                 fontSize = bottomPreviewFontSize,
-                                                color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF0F172A),
-                                                fontWeight = FontWeight.SemiBold
+                                                color = colorScheme.onSurface,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontFeatureSettings = "tnum"
                                             ),
                                             maxLines = 1,
                                             softWrap = false,
@@ -622,85 +693,48 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     )
                                 }
                         ) {
-                        // Display Canvas Area with guaranteed minimum height to prevent any preview clipping
-                        Column(
+                        // Material You Google Calculator Display Card
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                                 .defaultMinSize(minHeight = 150.dp)
-                                .background(displayBgColor)
-                                .clickable { showHistoryDrawer = true }
-                                .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 12.dp),
-                            verticalArrangement = Arrangement.Bottom,
-                            horizontalAlignment = Alignment.End
+                                .padding(horizontal = 12.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            color = displayBgColor
                         ) {
-                            // Active input expression with auto-scroll to trailing edge
-                            val inputScrollState = rememberScrollState()
-                            LaunchedEffect(input) {
-                                if (input.isNotEmpty()) {
-                                    inputScrollState.animateScrollTo(inputScrollState.maxValue)
-                                }
-                            }
-                            Box(
+                            Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(inputScrollState),
-                                contentAlignment = Alignment.BottomEnd
+                                    .fillMaxSize()
+                                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 14.dp),
+                                verticalArrangement = Arrangement.Bottom,
+                                horizontalAlignment = Alignment.End
                             ) {
-                                Text(
-                                    text = if (input.isEmpty()) "0" else input,
-                                    style = TextStyleForInput(input),
-                                    color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
-                                    textAlign = TextAlign.End,
-                                    maxLines = 1,
-                                    softWrap = false,
+                                Spacer(
                                     modifier = Modifier
-                                        .testTag("calculation_input"),
-                                    fontFamily = FontFamily.SansSerif
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) { showHistoryDrawer = true }
                                 )
-                            }
 
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            // Live preview evaluation result with fluid slide & fade transition and horizontal scroll
-                            val previewScrollState = rememberScrollState()
-                            LaunchedEffect(result) {
-                                if (result.isNotEmpty()) {
-                                    previewScrollState.animateScrollTo(previewScrollState.maxValue)
-                                }
-                            }
-
-                            AnimatedContent(
-                                targetState = result,
-                                transitionSpec = {
-                                    (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                                        slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
-                                        .togetherWith(
-                                            fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
-                                        )
-                                },
-                                label = "calculationPreviewAnim"
-                            ) { previewText ->
-                                if (previewText.isNotEmpty()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .horizontalScroll(previewScrollState),
-                                        contentAlignment = Alignment.BottomEnd
-                                    ) {
-                                        Text(
-                                            text = previewText,
-                                            style = TextStyleForOutput(previewText),
-                                            color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
-                                            textAlign = TextAlign.End,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            modifier = Modifier
-                                                .testTag("calculation_preview"),
-                                            fontFamily = FontFamily.SansSerif
-                                        )
-                                    }
-                                }
+                                CalculatorExpressionDisplay(
+                                    fieldValue = inputFieldValue,
+                                    onFieldValueChange = { viewModel.onInputFieldValueChange(it) },
+                                    previewResult = result,
+                                    inputTextStyle = TextStyleForInput(input),
+                                    previewTextStyle = TextStyleForOutput(result),
+                                    textColor = calcColors.displayText,
+                                    placeholderColor = calcColors.displayPlaceholder,
+                                    previewColor = calcColors.displayPreview,
+                                    cursorColor = calcColors.cursor,
+                                    focusRequester = expressionFocusRequester,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentVerticalArrangement = Arrangement.Bottom,
+                                    spaceBetweenInputAndPreview = 6.dp
+                                )
                             }
                         }
 
@@ -708,7 +742,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 4.dp),
+                                .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -724,7 +758,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             ) {
                                 ChevronIcon(
                                     isExpanded = isScientificExpanded,
-                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68)
+                                    color = colorScheme.onSurfaceVariant
                                 )
                             }
 
@@ -733,7 +767,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     text = "RAD",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
+                                        color = colorScheme.primary
                                     )
                                 )
                             }
@@ -845,8 +879,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 ) {
                                     KeypadButton(
                                         label = if (isRadMode) "Rad" else "Deg",
-                                        bgColor = if (isRadMode) (if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)) else scientificBtnBg,
-                                        txtColor = if (isRadMode) (if (isDark) Color(0xFF381E72) else Color(0xFFFFFFFF)) else scientificBtnTxt,
+                                        bgColor = if (isRadMode) calcColors.activeToggleBg else scientificBtnBg,
+                                        txtColor = if (isRadMode) calcColors.activeToggleTxt else scientificBtnTxt,
                                         modifier = Modifier.weight(1f),
                                         fontWeight = FontWeight.Bold
                                     ) { viewModel.toggleRadMode() }
@@ -880,8 +914,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                 ) {
                                     KeypadButton(
                                         label = "Inv",
-                                        bgColor = if (isInvMode) (if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)) else scientificBtnBg,
-                                        txtColor = if (isInvMode) (if (isDark) Color(0xFF381E72) else Color(0xFFFFFFFF)) else scientificBtnTxt,
+                                        bgColor = if (isInvMode) calcColors.activeToggleBg else scientificBtnBg,
+                                        txtColor = if (isInvMode) calcColors.activeToggleTxt else scientificBtnTxt,
                                         modifier = Modifier.weight(1f),
                                         fontWeight = FontWeight.Bold
                                     ) { viewModel.toggleInvMode() }
@@ -918,8 +952,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                         ) {
                             KeypadButton(
                                 label = "AC",
-                                bgColor = if (isDark) Color(0xFF493E5C) else Color(0xFFFCE8E6),
-                                txtColor = if (isDark) Color(0xFFFFB4AB) else Color(0xFFBA1A1A),
+                                bgColor = calcColors.clearBtnBg,
+                                txtColor = calcColors.clearBtnTxt,
                                 modifier = Modifier.weight(1f),
                                 fontWeight = FontWeight.Bold
                             ) { viewModel.handleKeyPress("AC") }
@@ -1119,20 +1153,12 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
             LandscapeCalculatorLayout(
                 viewModel = viewModel,
                 input = input,
+                inputFieldValue = inputFieldValue,
                 result = result,
                 isRadMode = isRadMode,
                 isInvMode = isInvMode,
-                isDark = isDark,
-                displayBgColor = displayBgColor,
-                keypadBgColor = keypadBgColor,
-                numberBtnBg = numberBtnBg,
-                numberBtnTxt = numberBtnTxt,
-                operatorBtnBg = operatorBtnBg,
-                operatorBtnTxt = operatorBtnTxt,
-                scientificBtnBg = scientificBtnBg,
-                scientificBtnTxt = scientificBtnTxt,
-                equalsBtnBg = equalsBtnBg,
-                equalsBtnTxt = equalsBtnTxt
+                colors = calcColors,
+                focusRequester = expressionFocusRequester
             )
         }
     }
@@ -1149,6 +1175,7 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
             )
         }
     }
+}
 
 @Composable
 fun InlineHistoryRow(
@@ -1157,6 +1184,7 @@ fun InlineHistoryRow(
     onDelete: (Long) -> Unit,
     isDark: Boolean
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1171,7 +1199,7 @@ fun InlineHistoryRow(
             modifier = Modifier.size(24.dp)
         ) {
             TrashIcon(
-                color = if (isDark) Color(0x66E6E1E5) else Color(0x661C1B1F),
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.size(14.dp)
             )
         }
@@ -1181,10 +1209,11 @@ fun InlineHistoryRow(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = "${item.expression}= ${item.result}",
+                text = "${ExpressionFormatter.formatForDisplay(item.expression)}= ${ExpressionFormatter.formatResultForDisplay(item.result)}",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Medium,
-                    color = if (isDark) Color(0xFFE2E8F0) else Color(0xFF1E293B)
+                    color = colorScheme.onSurface,
+                    fontFeatureSettings = "tnum"
                 ),
                 textAlign = TextAlign.End,
                 maxLines = 2,
@@ -1570,11 +1599,12 @@ fun HistoryRow(
     onDelete: (Long) -> Unit,
     isDark: Boolean
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (isDark) Color(0xFF232027) else Color(0xFFF1EEF4))
+            .background(colorScheme.surfaceContainer)
             .clickable { onSelect(item.expression) }
             .padding(vertical = 12.dp, horizontal = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1584,30 +1614,167 @@ fun HistoryRow(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = item.expression,
+                text = ExpressionFormatter.formatForDisplay(item.expression),
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    color = if (isDark) Color(0xFFCCC2DC) else Color(0xFF49454F)
+                    color = colorScheme.onSurfaceVariant,
+                    fontFeatureSettings = "tnum"
                 ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "= ${item.result}",
+                text = "= ${ExpressionFormatter.formatResultForDisplay(item.result)}",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    color = if (isDark) Color(0xFFE6E1E5) else Color(0xFF1C1B1F)
+                    color = colorScheme.onSurface,
+                    fontFeatureSettings = "tnum"
                 )
             )
         }
-        
+
         IconButton(
             onClick = { onDelete(item.id) }
         ) {
             TrashIcon(
-                color = if (isDark) Color(0x66E6E1E5) else Color(0x661C1B1F),
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
+
+/**
+ * Shared Google Calculator-style interactive expression display backed by Compose [BasicTextField].
+ * Suppresses the system soft keyboard while preserving blinking cursor, tap-to-position index,
+ * horizontal scrolling, thousands comma visual transformation, and auto-scaling typography.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun CalculatorExpressionDisplay(
+    fieldValue: TextFieldValue,
+    onFieldValueChange: (TextFieldValue) -> Unit,
+    previewResult: String,
+    inputTextStyle: TextStyle,
+    previewTextStyle: TextStyle,
+    textColor: Color,
+    placeholderColor: Color,
+    previewColor: Color,
+    cursorColor: Color,
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+    contentVerticalArrangement: Arrangement.Vertical = Arrangement.Bottom,
+    spaceBetweenInputAndPreview: Dp = 6.dp
+) {
+    val thousandsTransformation = remember { ThousandsSeparatorVisualTransformation() }
+    val formattedPreview = remember(previewResult) {
+        ExpressionFormatter.formatResultForDisplay(previewResult)
+    }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = contentVerticalArrangement,
+        horizontalAlignment = Alignment.End
+    ) {
+        InterceptPlatformTextInput(
+            interceptor = { _, _ ->
+                awaitCancellation()
+            }
+        ) {
+            @Suppress("DEPRECATION")
+            CompositionLocalProvider(LocalTextInputService provides null) {
+                BasicTextField(
+                    value = fieldValue,
+                    onValueChange = onFieldValueChange,
+                    singleLine = true,
+                    textStyle = inputTextStyle.copy(
+                        color = textColor,
+                        textAlign = TextAlign.End,
+                        fontFamily = FontFamily.SansSerif,
+                        fontFeatureSettings = "tnum"
+                    ),
+                    cursorBrush = SolidColor(cursorColor),
+                    visualTransformation = thousandsTransformation,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .then(
+                            if (fieldValue.text.isNotEmpty()) {
+                                Modifier.testTag("calculation_input")
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    decorationBox = { innerTextField ->
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            if (fieldValue.text.isEmpty()) {
+                                Text(
+                                    text = "0",
+                                    style = inputTextStyle.copy(
+                                        color = placeholderColor,
+                                        textAlign = TextAlign.End,
+                                        fontFamily = FontFamily.SansSerif,
+                                        fontFeatureSettings = "tnum"
+                                    ),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier
+                                        .padding(end = 2.dp)
+                                        .testTag("calculation_input")
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+            }
+        }
+
+        val previewScrollState = rememberScrollState()
+        LaunchedEffect(formattedPreview) {
+            if (formattedPreview.isNotEmpty()) {
+                previewScrollState.animateScrollTo(previewScrollState.maxValue)
+            }
+        }
+
+        AnimatedContent(
+            targetState = formattedPreview,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                    slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
+                    .togetherWith(
+                        fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
+                    )
+            },
+            label = "calculationPreviewAnim"
+        ) { previewText ->
+            if (previewText.isNotEmpty()) {
+                Column {
+                    Spacer(modifier = Modifier.height(spaceBetweenInputAndPreview))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(previewScrollState),
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        Text(
+                            text = previewText,
+                            style = previewTextStyle.copy(
+                                color = previewColor,
+                                textAlign = TextAlign.End,
+                                fontFamily = FontFamily.SansSerif,
+                                fontFeatureSettings = "tnum"
+                            ),
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.testTag("calculation_preview")
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1615,8 +1782,8 @@ fun HistoryRow(
 // Dynamically adjusts input text size based on formulas length to avoid clipping
 @Composable
 private fun TextStyleForInput(input: String) = when {
-    input.length < 8 -> MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.SemiBold)
-    input.length < 14 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.SemiBold)
+    input.length < 8 -> MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Normal)
+    input.length < 14 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Normal)
     input.length < 22 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
     input.length < 32 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal)
     else -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
@@ -1625,17 +1792,17 @@ private fun TextStyleForInput(input: String) = when {
 // Dynamically adjusts live output result size as well to make everything beautifully fit
 @Composable
 private fun TextStyleForOutput(result: String) = when {
-    result.length < 10 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Medium)
-    result.length < 16 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
-    result.length < 24 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
-    else -> MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+    result.length < 10 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
+    result.length < 16 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal)
+    result.length < 24 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
+    else -> MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Normal)
 }
 
 // Dynamically adjusts landscape input text size to guarantee no clipping or overlap
 @Composable
 private fun LandscapeTextStyleForInput(input: String) = when {
-    input.length < 8 -> MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.SemiBold)
-    input.length < 14 -> MaterialTheme.typography.headlineMedium.copy(fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.SemiBold)
+    input.length < 8 -> MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Normal)
+    input.length < 14 -> MaterialTheme.typography.headlineMedium.copy(fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.Normal)
     input.length < 22 -> MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Normal)
     input.length < 32 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Normal)
     else -> MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Normal)
@@ -1644,36 +1811,39 @@ private fun LandscapeTextStyleForInput(input: String) = when {
 // Dynamically adjusts landscape output preview size
 @Composable
 private fun LandscapeTextStyleForOutput(result: String) = when {
-    result.length < 10 -> MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
-    result.length < 16 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium)
-    result.length < 24 -> MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
-    else -> MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium)
+    result.length < 10 -> MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal)
+    result.length < 16 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Normal)
+    result.length < 24 -> MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Normal)
+    else -> MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Normal)
 }
 
 @Composable
 fun LandscapeCalculatorLayout(
     viewModel: CalculatorViewModel,
     input: String,
+    inputFieldValue: TextFieldValue,
     result: String,
     isRadMode: Boolean,
     isInvMode: Boolean,
-    isDark: Boolean,
-    displayBgColor: Color,
-    keypadBgColor: Color,
-    numberBtnBg: Color,
-    numberBtnTxt: Color,
-    operatorBtnBg: Color,
-    operatorBtnTxt: Color,
-    scientificBtnBg: Color,
-    scientificBtnTxt: Color,
-    equalsBtnBg: Color,
-    equalsBtnTxt: Color
+    colors: CalculatorColors,
+    focusRequester: FocusRequester
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val vibrate = rememberVibrator()
-    val activeSciBg = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
-    val activeSciTxt = if (isDark) Color(0xFF381E72) else Color(0xFFFFFFFF)
-    val alertBg = if (isDark) Color(0xFF493E5C) else Color(0xFFFCE8E6)
-    val alertTxt = if (isDark) Color(0xFFFFB4AB) else Color(0xFFBA1A1A)
+    val displayBgColor = colors.displayBg
+    val keypadBgColor = colors.keypadBg
+    val numberBtnBg = colors.numberBtnBg
+    val numberBtnTxt = colors.numberBtnTxt
+    val operatorBtnBg = colors.operatorBtnBg
+    val operatorBtnTxt = colors.operatorBtnTxt
+    val scientificBtnBg = colors.scientificBtnBg
+    val scientificBtnTxt = colors.scientificBtnTxt
+    val equalsBtnBg = colors.equalsBtnBg
+    val equalsBtnTxt = colors.equalsBtnTxt
+    val activeSciBg = colors.activeToggleBg
+    val activeSciTxt = colors.activeToggleTxt
+    val alertBg = colors.clearBtnBg
+    val alertTxt = colors.clearBtnTxt
 
     var isLandScientificExpanded by rememberSaveable { mutableStateOf(true) }
     val sciWeight by animateFloatAsState(
@@ -1715,9 +1885,9 @@ fun LandscapeCalculatorLayout(
                         },
                         shape = CircleShape,
                         color = if (isLandScientificExpanded) {
-                            if (isDark) Color(0xFF381E72) else Color(0xFFEADDFF)
+                            colorScheme.secondaryContainer
                         } else {
-                            if (isDark) Color(0xFF2B2930) else Color(0xFFF3EDF7)
+                            colorScheme.surfaceContainerHigh
                         },
                         modifier = Modifier
                             .semantics { contentDescription = if (isLandScientificExpanded) "Collapse scientific keypad" else "Expand scientific keypad" }
@@ -1730,13 +1900,13 @@ fun LandscapeCalculatorLayout(
                         ) {
                             ChevronIcon(
                                 isExpanded = isLandScientificExpanded,
-                                color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68)
+                                color = if (isLandScientificExpanded) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = if (isLandScientificExpanded) "Scientific" else "Basic",
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF4C3E68)
+                                    color = if (isLandScientificExpanded) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
                                 )
                             )
                         }
@@ -1745,93 +1915,39 @@ fun LandscapeCalculatorLayout(
                     if (isRadMode) {
                         Surface(
                             shape = CircleShape,
-                            color = if (isDark) Color(0xFF381E72) else Color(0xFFEADDFF)
+                            color = colorScheme.secondaryContainer
                         ) {
                             Text(
                                 text = "RAD",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
+                                    color = colorScheme.onSecondaryContainer
                                 )
                             )
                         }
                     }
                 }
 
-                // Right Side: Single-Line Horizontally Scrollable Expression & Preview
-                Column(
+                // Right Side: Interactive Cursor Expression & Live Preview
+                CalculatorExpressionDisplay(
+                    fieldValue = inputFieldValue,
+                    onFieldValueChange = { viewModel.onInputFieldValueChange(it) },
+                    previewResult = result,
+                    inputTextStyle = LandscapeTextStyleForInput(input),
+                    previewTextStyle = LandscapeTextStyleForOutput(result),
+                    textColor = colors.displayText,
+                    placeholderColor = colors.displayPlaceholder,
+                    previewColor = colors.displayPreview,
+                    cursorColor = colors.cursor,
+                    focusRequester = focusRequester,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .padding(end = 4.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.End
-                ) {
-                    val landInputScrollState = rememberScrollState()
-                    LaunchedEffect(input) {
-                        if (input.isNotEmpty()) {
-                            landInputScrollState.animateScrollTo(landInputScrollState.maxValue)
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(landInputScrollState),
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        Text(
-                            text = if (input.isEmpty()) "0" else input,
-                            style = LandscapeTextStyleForInput(input),
-                            color = if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000),
-                            textAlign = TextAlign.End,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.testTag("calculation_input"),
-                            fontFamily = FontFamily.SansSerif
-                        )
-                    }
-
-                    val landPreviewScrollState = rememberScrollState()
-                    LaunchedEffect(result) {
-                        if (result.isNotEmpty()) {
-                            landPreviewScrollState.animateScrollTo(landPreviewScrollState.maxValue)
-                        }
-                    }
-
-                    AnimatedContent(
-                        targetState = result,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                                slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
-                                .togetherWith(
-                                    fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
-                                )
-                        },
-                        label = "landCalculationPreviewAnim"
-                    ) { previewText ->
-                        if (previewText.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(landPreviewScrollState),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Text(
-                                    text = previewText,
-                                    style = LandscapeTextStyleForOutput(previewText),
-                                    color = if (isDark) Color(0xFFD6C4FF) else Color(0xFF6750A4),
-                                    textAlign = TextAlign.End,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    modifier = Modifier.testTag("calculation_preview"),
-                                    fontFamily = FontFamily.SansSerif
-                                )
-                            }
-                        }
-                    }
-                }
+                        .padding(start = 12.dp, end = 4.dp),
+                    contentVerticalArrangement = Arrangement.Center,
+                    spaceBetweenInputAndPreview = 2.dp
+                )
             }
         }
 
@@ -2269,6 +2385,7 @@ fun DropMenuItemScreenshotBlock(
     isScreenshotBlocked: Boolean,
     onToggle: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     DropdownMenuItem(
         text = {
             Row(
@@ -2281,14 +2398,14 @@ fun DropMenuItemScreenshotBlock(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(
-                            if (isScreenshotBlocked) Color(0xFF2E7D32) else Color(0xFF757575)
+                            if (isScreenshotBlocked) colorScheme.primaryContainer else colorScheme.surfaceContainerHighest
                         )
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = if (isScreenshotBlocked) "ON" else "OFF",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color.White,
+                            color = if (isScreenshotBlocked) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp
                         )

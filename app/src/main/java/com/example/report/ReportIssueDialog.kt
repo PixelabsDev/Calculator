@@ -91,14 +91,17 @@ fun ReportIssueDialog(
     var includeDiagnostics by remember { mutableStateOf(false) }
     var userConsentAgreed by remember { mutableStateOf(false) }
 
-    val dialogBg = if (isDark) Color(0xFF231E2B) else Color(0xFFFFFFFF)
-    val cardBg = if (isDark) Color(0xFF1F1B27) else Color(0xFFFAF7FD)
-    val inputBorder = if (isDark) Color(0xFF4A4456) else Color(0xFFC7BED4)
-    val textColor = if (isDark) Color(0xFFEBE4F5) else Color(0xFF1E1A26)
-    val subtextColor = if (isDark) Color(0xFFA59EB5) else Color(0xFF6E6879)
-    val accentColor = if (isDark) Color(0xFFD0BCFF) else Color(0xFF6750A4)
-    val chipSelectedBg = if (isDark) Color(0xFF4A3978) else Color(0xFFE8DEF8)
-    val chipUnselectedBg = if (isDark) Color(0xFF2B2636) else Color(0xFFF3EDF7)
+    val colorScheme = MaterialTheme.colorScheme
+    val dialogBg = colorScheme.surfaceContainerHigh
+    val cardBg = colorScheme.surfaceContainerLow
+    val inputBorder = colorScheme.outline
+    val textColor = colorScheme.onSurface
+    val subtextColor = colorScheme.onSurfaceVariant
+    val accentColor = colorScheme.primary
+    val onAccentColor = colorScheme.onPrimary
+    val chipSelectedBg = colorScheme.secondaryContainer
+    val chipSelectedTxt = colorScheme.onSecondaryContainer
+    val chipUnselectedBg = colorScheme.surfaceContainer
 
     fun handleSubmit() {
         val trimmedEmail = email.trim()
@@ -249,7 +252,7 @@ fun ReportIssueDialog(
                             modifier = Modifier
                                 .size(52.dp)
                                 .clip(CircleShape)
-                                .background(if (isDark) Color(0xFF1E3A24) else Color(0xFFE8F5E9)),
+                                .background(MaterialTheme.colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(text = "✅", fontSize = 26.sp)
@@ -258,7 +261,7 @@ fun ReportIssueDialog(
                             text = "Feedback Recorded!",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         )
                         Text(
@@ -281,7 +284,7 @@ fun ReportIssueDialog(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = accentColor,
-                                contentColor = if (isDark) Color(0xFF381E72) else Color.White
+                                contentColor = onAccentColor
                             )
                         ) {
                             Text("Done", fontWeight = FontWeight.Bold)
@@ -689,7 +692,7 @@ private fun ErrorCard(
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDark) Color(0xFF3E2723) else Color(0xFFFFEBEE)
+            containerColor = MaterialTheme.colorScheme.errorContainer
         ),
         modifier = modifier.fillMaxWidth()
     ) {
@@ -702,7 +705,7 @@ private fun ErrorCard(
             Text(
                 text = errorMessage,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = if (isDark) Color(0xFFFFCCBC) else Color(0xFFC62828),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
                     fontSize = 11.5.sp
                 )
             )
@@ -723,6 +726,7 @@ private fun CategoryChipGrid(
     isDark: Boolean,
     compact: Boolean = false
 ) {
+    val selectedChipTextColor = MaterialTheme.colorScheme.onSecondaryContainer
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -752,7 +756,7 @@ private fun CategoryChipGrid(
                         text = cat,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) (if (isDark) Color(0xFFF3EDFF) else Color(0xFF381E72)) else textColor,
+                            color = if (isSelected) selectedChipTextColor else textColor,
                             fontSize = if (compact) 11.sp else 12.sp
                         ),
                         maxLines = 1
@@ -785,7 +789,7 @@ private fun CategoryChipGrid(
                         text = cat,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) (if (isDark) Color(0xFFF3EDFF) else Color(0xFF381E72)) else textColor,
+                            color = if (isSelected) selectedChipTextColor else textColor,
                             fontSize = if (compact) 11.sp else 12.sp
                         ),
                         maxLines = 1
@@ -843,6 +847,7 @@ private fun ActionButtons(
     onEmail: () -> Unit,
     onCopy: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -853,9 +858,9 @@ private fun ActionButtons(
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = accentColor,
-                contentColor = if (isDark) Color(0xFF381E72) else Color.White,
-                disabledContainerColor = if (isDark) Color(0xFF3A3445) else Color(0xFFE0DAE8),
-                disabledContentColor = if (isDark) Color(0xFF888099) else Color(0xFF9E96A8)
+                contentColor = colorScheme.onPrimary,
+                disabledContainerColor = colorScheme.surfaceVariant,
+                disabledContentColor = colorScheme.onSurfaceVariant
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -866,7 +871,7 @@ private fun ActionButtons(
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
-                    color = if (isDark) Color(0xFF381E72) else Color.White
+                    color = colorScheme.onPrimary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Submitting...", fontWeight = FontWeight.Bold, fontSize = 13.sp)

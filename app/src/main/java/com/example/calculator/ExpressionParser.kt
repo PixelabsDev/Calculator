@@ -24,8 +24,9 @@ class ExpressionParser(private val isRadMode: Boolean) {
     fun evaluate(expression: String): Double {
         if (expression.isBlank()) return 0.0
 
-        // Normalize expression operators and function names
+        // Normalize display separators, expression operators, and function names
         str = expression
+            .replace(",", "")
             .replace("×", "*")
             .replace("÷", "/")
             .replace("sin⁻¹", "asin")
