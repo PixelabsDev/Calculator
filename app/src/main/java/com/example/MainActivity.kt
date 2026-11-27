@@ -46,6 +46,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -72,6 +73,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -88,10 +92,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -112,19 +120,30 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.InterceptPlatformTextInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalTextInputService
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -132,11 +151,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.calculator.CalculatorViewModel
+import com.example.calculator.DisplayTypographyScaler
 import com.example.calculator.ExpressionFormatter
-import com.example.calculator.ThousandsSeparatorVisualTransformation
+import com.example.calculator.ThousandsOutputTransformation
 import com.example.data.HistoryEntry
 import com.example.report.ReportIssueDialog
 import com.example.ui.theme.MyApplicationTheme
@@ -196,6 +217,8 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
     val context = LocalContext.current
     val input by viewModel.inputState.collectAsState()
     val inputFieldValue by viewModel.inputFieldState.collectAsState()
+    val keypadEventCounter by viewModel.keypadEventCounter.collectAsState()
+    val cursorDismissSignal by viewModel.cursorDismissSignal.collectAsState()
     val result by viewModel.resultState.collectAsState()
     val isRadMode by viewModel.isRadMode.collectAsState()
     val isInvMode by viewModel.isInvMode.collectAsState()
@@ -693,12 +716,12 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                                     )
                                 }
                         ) {
-                        // Material You Google Calculator Display Card
+                        // Material You Google Calculator Display Card (ergonomic center-bottom anchor)
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .defaultMinSize(minHeight = 150.dp)
+                                .defaultMinSize(minHeight = 148.dp)
                                 .padding(horizontal = 12.dp),
                             shape = RoundedCornerShape(28.dp),
                             color = displayBgColor
@@ -706,14 +729,33 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 14.dp),
-                                verticalArrangement = Arrangement.Bottom,
+                                    .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
                                 horizontalAlignment = Alignment.End
                             ) {
+                                // Subtle pull-down affordance pill signaling swipe/tap to open History
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) { showHistoryDrawer = true }
+                                        .padding(vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(36.dp)
+                                            .height(4.dp)
+                                            .clip(CircleShape)
+                                            .background(colorScheme.onSurfaceVariant.copy(alpha = 0.28f))
+                                    )
+                                }
+
                                 Spacer(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .weight(1f)
+                                        .weight(0.55f)
                                         .clickable(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null
@@ -722,18 +764,29 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
 
                                 CalculatorExpressionDisplay(
                                     fieldValue = inputFieldValue,
+                                    keypadEventCounter = keypadEventCounter,
+                                    cursorDismissSignal = cursorDismissSignal,
                                     onFieldValueChange = { viewModel.onInputFieldValueChange(it) },
+                                    onEdgeTapSnapCursor = { targetIndex -> viewModel.moveCursorTo(targetIndex, dismissHandle = true) },
                                     previewResult = result,
-                                    inputTextStyle = TextStyleForInput(input),
-                                    previewTextStyle = TextStyleForOutput(result),
+                                    inputSizeTiers = DisplayTypographyScaler.PORTRAIT_INPUT_SIZES_SP,
+                                    previewSizeTiers = DisplayTypographyScaler.PORTRAIT_PREVIEW_SIZES_SP,
+                                    inputBaseStyle = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Normal),
+                                    previewBaseStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Normal),
                                     textColor = calcColors.displayText,
                                     placeholderColor = calcColors.displayPlaceholder,
                                     previewColor = calcColors.displayPreview,
                                     cursorColor = calcColors.cursor,
                                     focusRequester = expressionFocusRequester,
                                     modifier = Modifier.fillMaxWidth(),
-                                    contentVerticalArrangement = Arrangement.Bottom,
-                                    spaceBetweenInputAndPreview = 6.dp
+                                    contentVerticalArrangement = Arrangement.Center,
+                                    spaceBetweenInputAndPreview = 8.dp
+                                )
+
+                                Spacer(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(0.22f)
                                 )
                             }
                         }
@@ -1152,7 +1205,6 @@ fun CalculatorAppScreen(viewModel: CalculatorViewModel = viewModel()) {
             // Dedicated Landscape Calculator View
             LandscapeCalculatorLayout(
                 viewModel = viewModel,
-                input = input,
                 inputFieldValue = inputFieldValue,
                 result = result,
                 isRadMode = isRadMode,
@@ -1645,18 +1697,26 @@ fun HistoryRow(
 }
 
 /**
- * Shared Google Calculator-style interactive expression display backed by Compose [BasicTextField].
- * Suppresses the system soft keyboard while preserving blinking cursor, tap-to-position index,
- * horizontal scrolling, thousands comma visual transformation, and auto-scaling typography.
+ * Shared Google Calculator-style interactive expression display backed by Compose [TextFieldState].
+ * Features:
+ * - Suppressed system keyboard via [InterceptPlatformTextInput] & null [LocalTextInputService].
+ * - Native long-press scrubbing bubble + Copy/Paste context menu.
+ * - Instant handle & toolbar collapse when any calculator keypad key or far-edge tap occurs.
+ * - Pixel-exact single-line typography auto-scaling via [TextMeasurer] and [DisplayTypographyScaler].
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CalculatorExpressionDisplay(
     fieldValue: TextFieldValue,
+    keypadEventCounter: Int,
+    cursorDismissSignal: Int,
     onFieldValueChange: (TextFieldValue) -> Unit,
+    onEdgeTapSnapCursor: (Int) -> Unit,
     previewResult: String,
-    inputTextStyle: TextStyle,
-    previewTextStyle: TextStyle,
+    inputSizeTiers: FloatArray,
+    previewSizeTiers: FloatArray,
+    inputBaseStyle: TextStyle,
+    previewBaseStyle: TextStyle,
     textColor: Color,
     placeholderColor: Color,
     previewColor: Color,
@@ -1664,114 +1724,314 @@ fun CalculatorExpressionDisplay(
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
     contentVerticalArrangement: Arrangement.Vertical = Arrangement.Bottom,
-    spaceBetweenInputAndPreview: Dp = 6.dp
+    spaceBetweenInputAndPreview: Dp = 8.dp
 ) {
-    val thousandsTransformation = remember { ThousandsSeparatorVisualTransformation() }
+    val textFieldState = remember {
+        TextFieldState(
+            initialText = fieldValue.text,
+            initialSelection = fieldValue.selection
+        )
+    }
+    val outputTransformation = remember { ThousandsOutputTransformation() }
+    val inputScrollState = rememberScrollState()
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
+    val textToolbar = LocalTextToolbar.current
+    val viewConfig = LocalViewConfiguration.current
+
+    var lastTextLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var isHandleLikelyVisible by remember { mutableStateOf(false) }
+    var suppressSyncFromField by remember { mutableStateOf(false) }
+    val latestFieldValue by rememberUpdatedState(fieldValue)
+
+    // Sync programmatic ViewModel edits into Compose TextFieldState cleanly
+    LaunchedEffect(fieldValue) {
+        val currentText = textFieldState.text.toString()
+        val currentSel = textFieldState.selection
+        if (currentText != fieldValue.text || currentSel != fieldValue.selection) {
+            val textChanged = currentText != fieldValue.text
+            suppressSyncFromField = true
+            try {
+                textFieldState.edit {
+                    if (textChanged) {
+                        replace(0, length, fieldValue.text)
+                    }
+                    selection = fieldValue.selection
+                }
+            } finally {
+                suppressSyncFromField = false
+            }
+            if (textChanged) {
+                isHandleLikelyVisible = false
+            }
+        }
+    }
+
+    // Propagate interactive taps, drags, and clipboard pastes back to CalculatorViewModel
+    LaunchedEffect(textFieldState) {
+        snapshotFlow {
+            TextFieldValue(
+                text = textFieldState.text.toString(),
+                selection = textFieldState.selection
+            )
+        }
+            .distinctUntilChanged()
+            .collect { updated ->
+                if (!suppressSyncFromField && updated != latestFieldValue) {
+                    onFieldValueChange(updated)
+                }
+            }
+    }
+
+    // Dismiss floating cursor bubble & Copy/Paste toolbar immediately on any keypad key or edge tap
+    var lastKeypadCount by remember { mutableIntStateOf(keypadEventCounter) }
+    var lastDismissSignal by remember { mutableIntStateOf(cursorDismissSignal) }
+
+    LaunchedEffect(keypadEventCounter, cursorDismissSignal) {
+        val keypadPressed = keypadEventCounter != lastKeypadCount
+        val edgeDismissRequested = cursorDismissSignal != lastDismissSignal
+        lastKeypadCount = keypadEventCounter
+        lastDismissSignal = cursorDismissSignal
+
+        if (!keypadPressed && !edgeDismissRequested) return@LaunchedEffect
+
+        if (textToolbar.status == TextToolbarStatus.Shown) {
+            textToolbar.hide()
+        }
+
+        if (isHandleLikelyVisible || edgeDismissRequested) {
+            isHandleLikelyVisible = false
+            focusManager.clearFocus(force = true)
+            withFrameNanos { }
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    val formattedInput = remember(fieldValue.text) {
+        if (fieldValue.text.isEmpty()) "0" else ExpressionFormatter.formatForDisplay(fieldValue.text)
+    }
     val formattedPreview = remember(previewResult) {
         ExpressionFormatter.formatResultForDisplay(previewResult)
     }
 
-    Column(
-        modifier = modifier,
-        verticalArrangement = contentVerticalArrangement,
-        horizontalAlignment = Alignment.End
-    ) {
-        InterceptPlatformTextInput(
-            interceptor = { _, _ ->
-                awaitCancellation()
-            }
-        ) {
-            @Suppress("DEPRECATION")
-            CompositionLocalProvider(LocalTextInputService provides null) {
-                BasicTextField(
-                    value = fieldValue,
-                    onValueChange = onFieldValueChange,
-                    singleLine = true,
-                    textStyle = inputTextStyle.copy(
-                        color = textColor,
-                        textAlign = TextAlign.End,
+    BoxWithConstraints(modifier = modifier) {
+        val availableWidthPx = with(density) { (maxWidth - 8.dp).toPx() }.coerceAtLeast(1f)
+
+        val fittedInputFontSp = remember(formattedInput, availableWidthPx, inputBaseStyle, inputSizeTiers) {
+            DisplayTypographyScaler.selectFittingFontSizeSp(
+                tiersSp = inputSizeTiers,
+                maxWidthPx = availableWidthPx
+            ) { candidateSp ->
+                textMeasurer.measure(
+                    text = AnnotatedString(formattedInput),
+                    style = inputBaseStyle.copy(
+                        fontSize = candidateSp.sp,
+                        lineHeight = (candidateSp * 1.15f).sp,
                         fontFamily = FontFamily.SansSerif,
                         fontFeatureSettings = "tnum"
                     ),
-                    cursorBrush = SolidColor(cursorColor),
-                    visualTransformation = thousandsTransformation,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester)
-                        .then(
-                            if (fieldValue.text.isNotEmpty()) {
-                                Modifier.testTag("calculation_input")
-                            } else {
-                                Modifier
-                            }
+                    maxLines = 1,
+                    softWrap = false
+                ).size.width.toFloat()
+            }
+        }
+
+        val fittedPreviewFontSp = remember(formattedPreview, availableWidthPx, previewBaseStyle, previewSizeTiers) {
+            if (formattedPreview.isEmpty()) {
+                previewSizeTiers.firstOrNull() ?: 32f
+            } else {
+                DisplayTypographyScaler.selectFittingFontSizeSp(
+                    tiersSp = previewSizeTiers,
+                    maxWidthPx = availableWidthPx
+                ) { candidateSp ->
+                    textMeasurer.measure(
+                        text = AnnotatedString(formattedPreview),
+                        style = previewBaseStyle.copy(
+                            fontSize = candidateSp.sp,
+                            lineHeight = (candidateSp * 1.2f).sp,
+                            fontFamily = FontFamily.SansSerif,
+                            fontFeatureSettings = "tnum"
                         ),
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            if (fieldValue.text.isEmpty()) {
-                                Text(
-                                    text = "0",
-                                    style = inputTextStyle.copy(
-                                        color = placeholderColor,
-                                        textAlign = TextAlign.End,
-                                        fontFamily = FontFamily.SansSerif,
-                                        fontFeatureSettings = "tnum"
-                                    ),
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    modifier = Modifier
-                                        .padding(end = 2.dp)
-                                        .testTag("calculation_input")
-                                )
+                        maxLines = 1,
+                        softWrap = false
+                    ).size.width.toFloat()
+                }
+            }
+        }
+
+        val dynamicInputStyle = remember(fittedInputFontSp, inputBaseStyle, textColor) {
+            inputBaseStyle.copy(
+                fontSize = fittedInputFontSp.sp,
+                lineHeight = (fittedInputFontSp * 1.15f).sp,
+                color = textColor,
+                textAlign = TextAlign.End,
+                fontFamily = FontFamily.SansSerif,
+                fontFeatureSettings = "tnum"
+            )
+        }
+
+        val dynamicPreviewStyle = remember(fittedPreviewFontSp, previewBaseStyle, previewColor) {
+            previewBaseStyle.copy(
+                fontSize = fittedPreviewFontSp.sp,
+                lineHeight = (fittedPreviewFontSp * 1.2f).sp,
+                color = previewColor,
+                textAlign = TextAlign.End,
+                fontFamily = FontFamily.SansSerif,
+                fontFeatureSettings = "tnum"
+            )
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = contentVerticalArrangement,
+            horizontalAlignment = Alignment.End
+        ) {
+            val edgeAndScrubObserver = Modifier.pointerInput(viewConfig, density) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val downEvent = awaitPointerEvent(PointerEventPass.Final)
+                        val down = downEvent.changes.firstOrNull { it.pressed } ?: continue
+                        val downTime = down.uptimeMillis
+                        val downPos = down.position
+                        var maxDistSq = 0f
+                        var lastPos = downPos
+                        var upTime = downTime
+
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Final)
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            lastPos = change.position
+                            val dx = lastPos.x - downPos.x
+                            val dy = lastPos.y - downPos.y
+                            val distSq = dx * dx + dy * dy
+                            if (distSq > maxDistSq) maxDistSq = distSq
+                            upTime = change.uptimeMillis
+                            if (!change.pressed || change.changedToUpIgnoreConsumed()) {
+                                break
                             }
-                            innerTextField()
+                        }
+
+                        val elapsed = upTime - downTime
+                        val slopSq = viewConfig.touchSlop * viewConfig.touchSlop
+                        val isQuickTap = elapsed < viewConfig.longPressTimeoutMillis && maxDistSq <= slopSq
+
+                        if (!isQuickTap) {
+                            // User long-pressed or scrubbed: keep native teardrop bubble & toolbar active
+                            isHandleLikelyVisible = true
+                        } else {
+                            val edgeZonePx = with(density) { 20.dp.toPx() }
+                            val scrollOffset = inputScrollState.value.toFloat()
+                            val layout = lastTextLayout
+                            val visibleLeft = layout?.getLineLeft(0)?.minus(scrollOffset)
+                            val visibleRight = layout?.getLineRight(0)?.minus(scrollOffset)
+                            val edgeTarget = DisplayTypographyScaler.resolveEdgeTapCursorIndex(
+                                tapX = lastPos.x,
+                                fieldWidthPx = size.width.toFloat(),
+                                edgeZonePx = edgeZonePx,
+                                lineLeftPx = visibleLeft,
+                                lineRightPx = visibleRight,
+                                textLength = textFieldState.text.length
+                            )
+                            if (edgeTarget != null) {
+                                onEdgeTapSnapCursor(edgeTarget)
+                            } else {
+                                isHandleLikelyVisible = true
+                            }
                         }
                     }
-                )
+                }
             }
-        }
 
-        val previewScrollState = rememberScrollState()
-        LaunchedEffect(formattedPreview) {
-            if (formattedPreview.isNotEmpty()) {
-                previewScrollState.animateScrollTo(previewScrollState.maxValue)
-            }
-        }
-
-        AnimatedContent(
-            targetState = formattedPreview,
-            transitionSpec = {
-                (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                    slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
-                    .togetherWith(
-                        fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
-                    )
-            },
-            label = "calculationPreviewAnim"
-        ) { previewText ->
-            if (previewText.isNotEmpty()) {
-                Column {
-                    Spacer(modifier = Modifier.height(spaceBetweenInputAndPreview))
-                    Box(
+            InterceptPlatformTextInput(
+                interceptor = { _, _ ->
+                    awaitCancellation()
+                }
+            ) {
+                @Suppress("DEPRECATION")
+                CompositionLocalProvider(LocalTextInputService provides null) {
+                    BasicTextField(
+                        state = textFieldState,
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        scrollState = inputScrollState,
+                        textStyle = dynamicInputStyle,
+                        cursorBrush = SolidColor(cursorColor),
+                        outputTransformation = outputTransformation,
+                        onTextLayout = { getResult ->
+                            lastTextLayout = getResult()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(previewScrollState),
-                        contentAlignment = Alignment.BottomEnd
-                    ) {
-                        Text(
-                            text = previewText,
-                            style = previewTextStyle.copy(
-                                color = previewColor,
-                                textAlign = TextAlign.End,
-                                fontFamily = FontFamily.SansSerif,
-                                fontFeatureSettings = "tnum"
+                            .then(edgeAndScrubObserver)
+                            .focusRequester(focusRequester)
+                            .then(
+                                if (fieldValue.text.isNotEmpty()) {
+                                    Modifier.testTag("calculation_input")
+                                } else {
+                                    Modifier
+                                }
                             ),
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.testTag("calculation_preview")
+                        decorator = TextFieldDecorator { innerTextField ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                if (fieldValue.text.isEmpty()) {
+                                    Text(
+                                        text = "0",
+                                        style = dynamicInputStyle.copy(color = placeholderColor),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier
+                                            .padding(end = 2.dp)
+                                            .testTag("calculation_input")
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
+                    )
+                }
+            }
+
+            val previewScrollState = rememberScrollState()
+            LaunchedEffect(formattedPreview) {
+                if (formattedPreview.isNotEmpty()) {
+                    previewScrollState.animateScrollTo(previewScrollState.maxValue)
+                }
+            }
+
+            AnimatedContent(
+                targetState = formattedPreview,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                        slideInVertically(animationSpec = tween(180, easing = FastOutSlowInEasing)) { it / 3 })
+                        .togetherWith(
+                            fadeOut(animationSpec = tween(120, easing = FastOutSlowInEasing))
                         )
+                },
+                label = "calculationPreviewAnim"
+            ) { previewText ->
+                if (previewText.isNotEmpty()) {
+                    Column {
+                        Spacer(modifier = Modifier.height(spaceBetweenInputAndPreview))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(previewScrollState),
+                            contentAlignment = Alignment.BottomEnd
+                        ) {
+                            Text(
+                                text = previewText,
+                                style = dynamicPreviewStyle,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.testTag("calculation_preview")
+                            )
+                        }
                     }
                 }
             }
@@ -1779,48 +2039,9 @@ fun CalculatorExpressionDisplay(
     }
 }
 
-// Dynamically adjusts input text size based on formulas length to avoid clipping
-@Composable
-private fun TextStyleForInput(input: String) = when {
-    input.length < 8 -> MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Normal)
-    input.length < 14 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Normal)
-    input.length < 22 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
-    input.length < 32 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal)
-    else -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
-}
-
-// Dynamically adjusts live output result size as well to make everything beautifully fit
-@Composable
-private fun TextStyleForOutput(result: String) = when {
-    result.length < 10 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal)
-    result.length < 16 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal)
-    result.length < 24 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal)
-    else -> MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Normal)
-}
-
-// Dynamically adjusts landscape input text size to guarantee no clipping or overlap
-@Composable
-private fun LandscapeTextStyleForInput(input: String) = when {
-    input.length < 8 -> MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Normal)
-    input.length < 14 -> MaterialTheme.typography.headlineMedium.copy(fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.Normal)
-    input.length < 22 -> MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp, lineHeight = 25.sp, fontWeight = FontWeight.Normal)
-    input.length < 32 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Normal)
-    else -> MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Normal)
-}
-
-// Dynamically adjusts landscape output preview size
-@Composable
-private fun LandscapeTextStyleForOutput(result: String) = when {
-    result.length < 10 -> MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal)
-    result.length < 16 -> MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Normal)
-    result.length < 24 -> MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Normal)
-    else -> MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Normal)
-}
-
 @Composable
 fun LandscapeCalculatorLayout(
     viewModel: CalculatorViewModel,
-    input: String,
     inputFieldValue: TextFieldValue,
     result: String,
     isRadMode: Boolean,
@@ -1830,6 +2051,8 @@ fun LandscapeCalculatorLayout(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val vibrate = rememberVibrator()
+    val keypadEventCounter by viewModel.keypadEventCounter.collectAsState()
+    val cursorDismissSignal by viewModel.cursorDismissSignal.collectAsState()
     val displayBgColor = colors.displayBg
     val keypadBgColor = colors.keypadBg
     val numberBtnBg = colors.numberBtnBg
@@ -1932,10 +2155,15 @@ fun LandscapeCalculatorLayout(
                 // Right Side: Interactive Cursor Expression & Live Preview
                 CalculatorExpressionDisplay(
                     fieldValue = inputFieldValue,
+                    keypadEventCounter = keypadEventCounter,
+                    cursorDismissSignal = cursorDismissSignal,
                     onFieldValueChange = { viewModel.onInputFieldValueChange(it) },
+                    onEdgeTapSnapCursor = { targetIndex -> viewModel.moveCursorTo(targetIndex, dismissHandle = true) },
                     previewResult = result,
-                    inputTextStyle = LandscapeTextStyleForInput(input),
-                    previewTextStyle = LandscapeTextStyleForOutput(result),
+                    inputSizeTiers = DisplayTypographyScaler.LANDSCAPE_INPUT_SIZES_SP,
+                    previewSizeTiers = DisplayTypographyScaler.LANDSCAPE_PREVIEW_SIZES_SP,
+                    inputBaseStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Normal),
+                    previewBaseStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal),
                     textColor = colors.displayText,
                     placeholderColor = colors.displayPlaceholder,
                     previewColor = colors.displayPreview,
