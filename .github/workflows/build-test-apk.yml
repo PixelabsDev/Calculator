@@ -50,6 +50,9 @@ jobs:
       - name: Run Android Lint (Release)
         run: ./gradlew lintRelease --stacktrace
 
+      - name: Verify Baseline Profile & Release ArtProfile Compilation
+        run: ./gradlew compileReleaseArtProfile --stacktrace
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 

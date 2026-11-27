@@ -41,6 +41,10 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         )
 
         private val POSTFIX_MULTIPLY_TRIGGERS = setOf('π', 'e', ')', '%', '!')
+
+        private val FRESH_START_NON_DIGIT_KEYS = setOf(
+            ".", "(", "( )", "π", "e", "sin", "cos", "tan", "ln", "log", "√"
+        )
     }
 
     private val prefs = application.getSharedPreferences("calculator_settings", Context.MODE_PRIVATE)
@@ -145,6 +149,9 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
     private val _cursorDismissSignal = MutableStateFlow(0)
     val cursorDismissSignal: StateFlow<Int> = _cursorDismissSignal.asStateFlow()
 
+    private val _isEvaluated = MutableStateFlow(false)
+    val isEvaluated: StateFlow<Boolean> = _isEvaluated.asStateFlow()
+
     private val _resultState = MutableStateFlow("")
     val resultState: StateFlow<String> = _resultState.asStateFlow()
 
@@ -202,7 +209,11 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun updateInputField(newText: String, newCursor: Int = newText.length) {
+    private fun updateInputField(
+        newText: String,
+        newCursor: Int = newText.length,
+        evaluated: Boolean = false
+    ) {
         val clamped = newCursor.coerceIn(0, newText.length)
         val snappedCursor = snapCursorOutOfFunctionTokens(newText, clamped)
         _inputFieldState.value = TextFieldValue(
@@ -210,6 +221,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             selection = TextRange(snappedCursor)
         )
         _inputState.value = newText
+        _isEvaluated.value = evaluated
     }
 
     /**
@@ -246,6 +258,9 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             val snappedStart = snapCursorOutOfFunctionTokens(newValue.text, newValue.selection.start)
             val snappedEnd = snapCursorOutOfFunctionTokens(newValue.text, newValue.selection.end)
             val updated = newValue.copy(selection = TextRange(snappedStart, snappedEnd))
+            if (updated.selection != current.selection) {
+                _isEvaluated.value = false
+            }
             _inputFieldState.value = updated
             return
         }
@@ -275,6 +290,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         val snapped = snapCursorOutOfFunctionTokens(current.text, clamped)
         if (current.selection != TextRange(snapped)) {
             _inputFieldState.value = current.copy(selection = TextRange(snapped))
+            _isEvaluated.value = false
         }
         if (dismissHandle) {
             _cursorDismissSignal.value += 1
@@ -322,6 +338,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
         val selStart = min(field.selection.start, field.selection.end).coerceIn(0, current.length)
         val selEnd = max(field.selection.start, field.selection.end).coerceIn(0, current.length)
         val hasSelection = selStart != selEnd
+        val isPostEvaluated = _isEvaluated.value
 
         when (key) {
             "AC" -> {
@@ -335,7 +352,10 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                     updateInputField(newText, selStart)
                     return
                 }
-                if (selStart == 0) return
+                if (selStart == 0) {
+                    _isEvaluated.value = false
+                    return
+                }
 
                 val before = current.substring(0, selStart)
                 val after = current.substring(selStart)
@@ -383,18 +403,23 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                         }
                     }
 
-                    updateInputField(formattedResult, formattedResult.length)
+                    updateInputField(formattedResult, formattedResult.length, evaluated = true)
                     _resultState.value = ""
                 } catch (e: Throwable) {
+                    _isEvaluated.value = false
                     _resultState.value = e.message ?: "Error"
                 }
                 return
             }
         }
 
-        // For all insertion keys: replace any selected range first, then insert relative to (before | after)
-        val before = current.substring(0, selStart)
-        val after = current.substring(selEnd)
+        // After evaluation (with no active selection), digits, decimals, constants, and prefix
+        // functions start a fresh calculation; operators keep the evaluated result as operand 1.
+        val shouldStartFresh = isPostEvaluated &&
+            !hasSelection &&
+            (current == "Error" || isFreshStartKey(key))
+        val before = if (shouldStartFresh) "" else current.substring(0, selStart)
+        val after = if (shouldStartFresh) "" else current.substring(selEnd)
         val lastBefore = before.lastOrNull()
 
         when (key) {
@@ -425,7 +450,7 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
                 if (before.isEmpty()) {
                     if (key == "-" && !after.startsWith("-")) {
                         updateInputField("-$after", 1)
-                    } else if (hasSelection) {
+                    } else if (hasSelection || shouldStartFresh) {
                         updateInputField(after, 0)
                     }
                     return
@@ -529,6 +554,11 @@ class CalculatorViewModel(application: Application) : AndroidViewModel(applicati
             if (!ch.isDigit()) break
         }
         return false
+    }
+
+    private fun isFreshStartKey(key: String): Boolean {
+        if (key.length == 1 && key[0].isDigit()) return true
+        return key in FRESH_START_NON_DIGIT_KEYS
     }
 
     private fun isOperator(char: Char): Boolean {
